@@ -8,11 +8,11 @@
 *.txt
 *.out
 report.*
-.cadence.yaml
 .ideas/*
 
 .github/workflows/*
 ./cadence.yml
+./cadence.yaml
 
 # Test binary, built with `go test -c`
 *.test
