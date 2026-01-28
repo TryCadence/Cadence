@@ -42,7 +42,7 @@ func TestTextReporter_Generate(t *testing.T) {
 		}
 
 		reporter := &TextReporter{}
-		output, err := reporter.Generate(data)
+		output, err := reporter.Generate(reportData)
 
 		if err != nil {
 			t.Fatalf("Generate() unexpected error = %v", err)
