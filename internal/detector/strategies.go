@@ -11,7 +11,6 @@ type DetectionStrategy interface {
 	Detect(pair *git.CommitPair, repoStats *metrics.RepositoryStats) (bool, string)
 }
 
-// Backward compatibility: These are now in patterns package
 type VelocityStrategy = patterns.VelocityStrategy
 type SizeStrategy = patterns.SizeStrategy
 type TimingStrategy = patterns.TimingStrategy
@@ -20,7 +19,6 @@ type DispersionStrategy = patterns.DispersionStrategy
 type RatioStrategy = patterns.RatioStrategy
 type PrecisionStrategy = patterns.PrecisionStrategy
 
-// AI Slop detection strategies
 type CommitMessageStrategy = patterns.CommitMessageStrategy
 type NamingPatternStrategy = patterns.NamingPatternStrategy
 type StructuralConsistencyStrategy = patterns.StructuralConsistencyStrategy
@@ -28,8 +26,9 @@ type BurstPatternStrategy = patterns.BurstPatternStrategy
 type ErrorHandlingPatternStrategy = patterns.ErrorHandlingPatternStrategy
 type TemplatePatternStrategy = patterns.TemplatePatternStrategy
 type FileExtensionPatternStrategy = patterns.FileExtensionPatternStrategy
+type StatisticalAnomalyStrategy = patterns.StatisticalAnomalyStrategy
+type TimingAnomalyStrategy = patterns.TimingAnomalyStrategy
 
-// Constructor functions for backward compatibility
 func NewVelocityStrategy(additionsPerMin, deletionsPerMin float64) *VelocityStrategy {
 	return patterns.NewVelocityStrategy(additionsPerMin, deletionsPerMin)
 }
@@ -58,7 +57,6 @@ func NewPrecisionStrategy(consistency float64) *PrecisionStrategy {
 	return patterns.NewPrecisionStrategy(consistency)
 }
 
-// AI Slop detection strategy constructors
 func NewCommitMessageStrategy() *CommitMessageStrategy {
 	return patterns.NewCommitMessageStrategy()
 }
@@ -85,4 +83,12 @@ func NewTemplatePatternStrategy() *TemplatePatternStrategy {
 
 func NewFileExtensionPatternStrategy() *FileExtensionPatternStrategy {
 	return patterns.NewFileExtensionPatternStrategy()
+}
+
+func NewStatisticalAnomalyStrategy() *StatisticalAnomalyStrategy {
+	return patterns.NewStatisticalAnomalyStrategy()
+}
+
+func NewTimingAnomalyStrategy() *TimingAnomalyStrategy {
+	return patterns.NewTimingAnomalyStrategy()
 }

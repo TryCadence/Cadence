@@ -8,7 +8,6 @@ import (
 	"github.com/codemeapixel/cadence/internal/metrics"
 )
 
-// CommitMessageStrategy detects AI-generated commit message patterns
 type CommitMessageStrategy struct {
 	enabled bool
 }
@@ -28,7 +27,6 @@ func (s *CommitMessageStrategy) Detect(pair *git.CommitPair, repoStats *metrics.
 
 	msg := strings.ToLower(pair.Current.Message)
 
-	// AI-generated commit message patterns
 	aiPatterns := []string{
 		"implement",
 		"add functionality",
@@ -44,7 +42,6 @@ func (s *CommitMessageStrategy) Detect(pair *git.CommitPair, repoStats *metrics.
 		"add support for",
 	}
 
-	// Generic/template commit messages
 	genericPatterns := []string{
 		"initial commit",
 		"update readme",
@@ -73,7 +70,6 @@ func (s *CommitMessageStrategy) Detect(pair *git.CommitPair, repoStats *metrics.
 		}
 	}
 
-	// Flag if message is very generic or uses multiple AI patterns
 	if aiScore >= 2 || genericScore >= 1 {
 		return true, fmt.Sprintf(
 			"Suspicious commit message patterns - generic/AI-like phrasing (AI patterns: %d, generic: %d)",
@@ -81,7 +77,6 @@ func (s *CommitMessageStrategy) Detect(pair *git.CommitPair, repoStats *metrics.
 		)
 	}
 
-	// Check for overly descriptive but generic messages
 	words := strings.Fields(msg)
 	if len(words) > 8 && (strings.Contains(msg, "implement") || strings.Contains(msg, "functionality")) {
 		return true, "Overly verbose yet generic commit message - typical of AI generation"
@@ -90,7 +85,6 @@ func (s *CommitMessageStrategy) Detect(pair *git.CommitPair, repoStats *metrics.
 	return false, ""
 }
 
-// NamingPatternStrategy detects suspicious naming conventions
 type NamingPatternStrategy struct {
 	enabled bool
 }
@@ -108,12 +102,10 @@ func (s *NamingPatternStrategy) Detect(pair *git.CommitPair, repoStats *metrics.
 		return false, ""
 	}
 
-	// Analyze actual diff content if available
 	if pair.DiffContent != "" {
 		return s.analyzeCodeContent(pair.DiffContent)
 	}
 
-	// Fallback to commit message analysis
 	msg := strings.ToLower(pair.Current.Message)
 	genericNames := []string{
 		"variable", "function", "method", "class", "object", "instance",
@@ -153,13 +145,11 @@ func (s *NamingPatternStrategy) analyzeCodeContent(diffContent string) (bool, st
 		return false, ""
 	}
 
-	// AI slop patterns in actual code
 	suspiciousPatterns := 0
 	totalPatterns := 0
 
 	codeContent := strings.Join(addedLines, "\n")
 
-	// Generic variable names
 	genericVarPatterns := []string{
 		"var1", "var2", "temp", "data", "result", "value", "item",
 		"element", "obj", "instance", "helper", "utility", "manager",
@@ -171,14 +161,12 @@ func (s *NamingPatternStrategy) analyzeCodeContent(diffContent string) (bool, st
 		totalPatterns++
 	}
 
-	// TODO comments (AI often generates these)
 	todoCount := strings.Count(strings.ToLower(codeContent), "todo")
 	fixmeCount := strings.Count(strings.ToLower(codeContent), "fixme")
 	if todoCount > 2 || fixmeCount > 1 {
 		suspiciousPatterns++
 	}
 
-	// Overly consistent naming (camelCase perfection)
 	words := strings.Fields(codeContent)
 	perfectCamelCaseCount := 0
 	for _, word := range words {
@@ -190,10 +178,9 @@ func (s *NamingPatternStrategy) analyzeCodeContent(diffContent string) (bool, st
 		suspiciousPatterns++
 	}
 
-	// Check for suspiciously perfect error handling
 	if strings.Contains(codeContent, "catch") || strings.Contains(codeContent, "except") {
 		errorHandlingCount := strings.Count(codeContent, "catch") + strings.Count(codeContent, "except") + strings.Count(codeContent, "try")
-		if errorHandlingCount > len(addedLines)/20 { // Too many try-catch blocks
+		if errorHandlingCount > len(addedLines)/20 {
 			suspiciousPatterns++
 		}
 	}
@@ -213,7 +200,6 @@ func isPerfectCamelCase(word string) bool {
 		return false
 	}
 
-	// Check if it starts with lowercase and has exactly one uppercase letter
 	if !(word[0] >= 'a' && word[0] <= 'z') {
 		return false
 	}
@@ -228,7 +214,6 @@ func isPerfectCamelCase(word string) bool {
 	return uppercaseCount == 1
 }
 
-// StructuralConsistencyStrategy detects overly consistent code structure patterns
 type StructuralConsistencyStrategy struct {
 	enabled bool
 }
@@ -246,11 +231,9 @@ func (s *StructuralConsistencyStrategy) Detect(pair *git.CommitPair, repoStats *
 		return false, ""
 	}
 
-	// Flag commits where additions and deletions are suspiciously proportional
 	if pair.Stats.Additions > 100 && pair.Stats.Deletions > 100 {
 		ratio := float64(pair.Stats.Additions) / float64(pair.Stats.Deletions)
 
-		// AI often generates very balanced refactoring (close to 1:1 ratio)
 		if ratio >= 0.9 && ratio <= 1.1 {
 			return true, fmt.Sprintf(
 				"Suspiciously balanced addition/deletion ratio: %.2f - may indicate automated refactoring",
@@ -270,7 +253,6 @@ func (s *StructuralConsistencyStrategy) Detect(pair *git.CommitPair, repoStats *
 	return false, ""
 }
 
-// BurstPatternStrategy detects suspicious commit timing bursts
 type BurstPatternStrategy struct {
 	maxCommitsPerHour int
 	enabled           bool
@@ -292,8 +274,6 @@ func (s *BurstPatternStrategy) Detect(pair *git.CommitPair, repoStats *metrics.R
 		return false, ""
 	}
 
-	// This would need to be implemented with access to broader commit history
-	// For now, check if commits are extremely close together (< 5 minutes)
 	if pair.TimeDelta.Seconds() < 300 && pair.Stats.Additions > 50 {
 		return true, fmt.Sprintf(
 			"Rapid commit pattern: %.1f seconds between substantial commits - may indicate batch processing",
@@ -304,7 +284,6 @@ func (s *BurstPatternStrategy) Detect(pair *git.CommitPair, repoStats *metrics.R
 	return false, ""
 }
 
-// ErrorHandlingPatternStrategy detects lack of error handling (AI often omits this)
 type ErrorHandlingPatternStrategy struct {
 	enabled bool
 }
@@ -327,7 +306,6 @@ func (s *ErrorHandlingPatternStrategy) Detect(pair *git.CommitPair, repoStats *m
 		return s.analyzeErrorHandling(pair.DiffContent, pair.Stats.Additions)
 	}
 
-	// Fallback to commit message analysis for large additions
 	if pair.Stats.Additions > 200 {
 		msg := strings.ToLower(pair.Current.Message)
 		hasErrorPatterns := strings.Contains(msg, "error") ||
@@ -358,36 +336,31 @@ func (s *ErrorHandlingPatternStrategy) analyzeErrorHandling(diffContent string, 
 		}
 	}
 
-	if len(addedLines) < 20 { // Too small to analyze
+	if len(addedLines) < 20 {
 		return false, ""
 	}
 
 	codeContent := strings.ToLower(strings.Join(addedLines, "\n"))
 
-	// Count actual error handling patterns
 	errorHandlingPatterns := 0
 
-	// Basic error handling
 	errorHandlingPatterns += strings.Count(codeContent, "try")
 	errorHandlingPatterns += strings.Count(codeContent, "catch")
 	errorHandlingPatterns += strings.Count(codeContent, "except")
 	errorHandlingPatterns += strings.Count(codeContent, "throw")
 	errorHandlingPatterns += strings.Count(codeContent, "throws")
 
-	// Advanced error handling
 	errorHandlingPatterns += strings.Count(codeContent, "error")
 	errorHandlingPatterns += strings.Count(codeContent, "exception")
 	errorHandlingPatterns += strings.Count(codeContent, "handle")
 
-	// Language-specific patterns
-	errorHandlingPatterns += strings.Count(codeContent, "if err != nil") // Go
-	errorHandlingPatterns += strings.Count(codeContent, ".catch(")       // JavaScript promises
-	errorHandlingPatterns += strings.Count(codeContent, "rescue")        // Ruby
+	errorHandlingPatterns += strings.Count(codeContent, "if err != nil")
+	errorHandlingPatterns += strings.Count(codeContent, ".catch(") // JavaScript promises
+	errorHandlingPatterns += strings.Count(codeContent, "rescue")  // Ruby
 
 	// Calculate expected error handling density
-	expectedErrorHandling := len(addedLines) / 30 // Roughly 1 error check per 30 lines
+	expectedErrorHandling := len(addedLines) / 30
 
-	// Flag if there's insufficient error handling for the amount of code
 	if additions > 100 && errorHandlingPatterns < expectedErrorHandling {
 		return true, fmt.Sprintf(
 			"Large code addition (%d lines) with insufficient error handling (%d patterns, expected ~%d) - typical AI omission",
@@ -395,7 +368,6 @@ func (s *ErrorHandlingPatternStrategy) analyzeErrorHandling(diffContent string, 
 		)
 	}
 
-	// Also flag overly perfect error handling (every line has error checking)
 	if errorHandlingPatterns > len(addedLines)/5 {
 		return true, fmt.Sprintf(
 			"Excessive error handling patterns (%d in %d lines) - may indicate AI over-compensation",
@@ -406,7 +378,6 @@ func (s *ErrorHandlingPatternStrategy) analyzeErrorHandling(diffContent string, 
 	return false, ""
 }
 
-// TemplatePatternStrategy detects template-like code patterns
 type TemplatePatternStrategy struct {
 	enabled bool
 }
@@ -432,7 +403,6 @@ func (s *TemplatePatternStrategy) Detect(pair *git.CommitPair, repoStats *metric
 		}
 	}
 
-	// Fallback to commit message analysis
 	msg := strings.ToLower(pair.Current.Message)
 	templatePatterns := []string{
 		"boilerplate", "template", "skeleton", "scaffold", "stub", "placeholder", "todo", "fixme",
@@ -475,7 +445,6 @@ func (s *TemplatePatternStrategy) analyzeTemplatePatterns(diffContent string) (b
 
 	suspiciousPatterns := 0
 
-	// Template comments
 	templateComments := []string{
 		"todo", "fixme", "placeholder", "implement", "add code here",
 		"your code here", "example", "sample", "template", "boilerplate",
@@ -486,14 +455,12 @@ func (s *TemplatePatternStrategy) analyzeTemplatePatterns(diffContent string) (b
 		}
 	}
 
-	// Repetitive patterns (AI loves patterns)
 	repetitiveCount := 0
 	for i := 0; i < len(addedLines)-1; i++ {
 		line1 := strings.TrimSpace(addedLines[i])
 		line2 := strings.TrimSpace(addedLines[i+1])
 
 		if len(line1) > 10 && len(line2) > 10 {
-			// Check for very similar lines (only 1-2 words different)
 			words1 := strings.Fields(line1)
 			words2 := strings.Fields(line2)
 
@@ -504,18 +471,17 @@ func (s *TemplatePatternStrategy) analyzeTemplatePatterns(diffContent string) (b
 						differences++
 					}
 				}
-				if differences <= 2 { // Very similar lines
+				if differences <= 2 {
 					repetitiveCount++
 				}
 			}
 		}
 	}
 
-	if repetitiveCount > len(addedLines)/8 { // More than 12.5% repetitive
+	if repetitiveCount > len(addedLines)/8 {
 		suspiciousPatterns++
 	}
 
-	// Perfect indentation consistency (humans are messier)
 	indentationLevels := make(map[int]int)
 	for _, line := range addedLines {
 		if strings.TrimSpace(line) != "" {
@@ -533,12 +499,11 @@ func (s *TemplatePatternStrategy) analyzeTemplatePatterns(diffContent string) (b
 		}
 	}
 
-	// If 90%+ of lines have consistent indentation increments
 	totalLines := len(addedLines)
 	if totalLines > 20 {
 		consistentIndentation := 0
 		for _, count := range indentationLevels {
-			if count > totalLines/10 { // If any indentation level is used >10% of the time
+			if count > totalLines/10 {
 				consistentIndentation += count
 			}
 		}
@@ -547,7 +512,6 @@ func (s *TemplatePatternStrategy) analyzeTemplatePatterns(diffContent string) (b
 		}
 	}
 
-	// Unused imports/variables (AI often generates these)
 	if strings.Contains(lowerContent, "import") {
 		importLines := make([]string, 0)
 		for _, line := range addedLines {
@@ -556,7 +520,6 @@ func (s *TemplatePatternStrategy) analyzeTemplatePatterns(diffContent string) (b
 			}
 		}
 
-		// Rough heuristic: if there are many imports but little code usage
 		if len(importLines) > 5 && len(addedLines) < len(importLines)*10 {
 			suspiciousPatterns++
 		}
@@ -572,15 +535,11 @@ func (s *TemplatePatternStrategy) analyzeTemplatePatterns(diffContent string) (b
 	return false, ""
 }
 
-// Helper functions
-
-// isNearInteger checks if a float64 is close to an integer value
 func isNearInteger(value, tolerance float64) bool {
 	remainder := value - float64(int(value))
 	return remainder < tolerance || remainder > (1.0-tolerance)
 }
 
-// FileExtensionPattern detects suspicious file creation patterns
 type FileExtensionPatternStrategy struct {
 	enabled bool
 }
@@ -598,11 +557,9 @@ func (s *FileExtensionPatternStrategy) Detect(pair *git.CommitPair, repoStats *m
 		return false, ""
 	}
 
-	// Check for suspicious creation of many files at once (typical of generators)
 	if pair.Stats.FilesChanged > 10 && pair.Stats.Additions > 1000 {
 		avgLinesPerFile := float64(pair.Stats.Additions) / float64(pair.Stats.FilesChanged)
 
-		// AI generators often create files with very consistent sizes
 		if avgLinesPerFile > 50 && avgLinesPerFile < 200 {
 			consistency := 1.0 - (avgLinesPerFile - float64(int(avgLinesPerFile)))
 			if consistency > 0.8 {

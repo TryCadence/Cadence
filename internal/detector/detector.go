@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/codemeapixel/cadence/internal/detector/patterns"
 	"github.com/codemeapixel/cadence/internal/git"
 	"github.com/codemeapixel/cadence/internal/metrics"
 )
@@ -60,6 +61,8 @@ func New(thresholds *Thresholds) (*Detector, error) {
 	strategies = append(strategies, NewErrorHandlingPatternStrategy())
 	strategies = append(strategies, NewTemplatePatternStrategy())
 	strategies = append(strategies, NewFileExtensionPatternStrategy())
+	strategies = append(strategies, NewStatisticalAnomalyStrategy())
+	strategies = append(strategies, NewTimingAnomalyStrategy())
 
 	return &Detector{
 		thresholds: thresholds,
@@ -72,15 +75,20 @@ func (d *Detector) DetectSuspicious(pairs []*git.CommitPair, repoStats *metrics.
 		return []*SuspiciousCommit{}
 	}
 
+	for _, strategy := range d.strategies {
+		if statStrategy, ok := strategy.(*patterns.StatisticalAnomalyStrategy); ok {
+			statStrategy.SetBaseline(pairs)
+			break
+		}
+	}
+
 	suspicious := make([]*SuspiciousCommit, 0)
 
 	for _, pair := range pairs {
-		// Skip commits with no changes
 		if pair.Stats.Additions == 0 && pair.Stats.Deletions == 0 {
 			continue
 		}
 
-		// Skip merge commits (handled by strategy if needed)
 		if len(pair.Current.Parents) > 1 {
 			continue
 		}
@@ -88,7 +96,6 @@ func (d *Detector) DetectSuspicious(pairs []*git.CommitPair, repoStats *metrics.
 		reasons := make([]string, 0)
 		detectionCount := 0
 
-		// Apply all strategies
 		for _, strategy := range d.strategies {
 			detected, reason := strategy.Detect(pair, repoStats)
 			if detected {
@@ -97,9 +104,7 @@ func (d *Detector) DetectSuspicious(pairs []*git.CommitPair, repoStats *metrics.
 			}
 		}
 
-		// Only add to suspicious if at least one strategy detected something
 		if len(reasons) > 0 {
-			// Calculate velocity metrics for reporting
 			var additionVelocity, deletionVelocity *metrics.VelocityMetrics
 			if pair.TimeDelta > 0 {
 				var err error
@@ -113,7 +118,6 @@ func (d *Detector) DetectSuspicious(pairs []*git.CommitPair, repoStats *metrics.
 				}
 			}
 
-			// Calculate a simple confidence score based on number of criteria triggered
 			score := float64(detectionCount) / float64(len(d.strategies))
 
 			suspicious = append(suspicious, &SuspiciousCommit{
@@ -129,7 +133,6 @@ func (d *Detector) DetectSuspicious(pairs []*git.CommitPair, repoStats *metrics.
 	return suspicious
 }
 
-// FormatTimeDelta formats a duration in a human-readable way
 func FormatTimeDelta(d time.Duration) string {
 	minutes := d.Minutes()
 	if minutes < 1 {

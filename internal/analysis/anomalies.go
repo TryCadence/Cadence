@@ -121,7 +121,6 @@ func DetectStatisticalAnomalies(pair *git.CommitPair, baseline *RepositoryBaseli
 		return anomalies
 	}
 
-	// Check additions anomaly
 	if baseline.StdDevAdditions > 0 {
 		zAdditions := (float64(pair.Stats.Additions) - baseline.AvgAdditions) / baseline.StdDevAdditions
 		if math.Abs(zAdditions) > 2.0 {
@@ -137,7 +136,6 @@ func DetectStatisticalAnomalies(pair *git.CommitPair, baseline *RepositoryBaseli
 		}
 	}
 
-	// Check deletions anomaly
 	if baseline.StdDevDeletions > 0 {
 		zDeletions := (float64(pair.Stats.Deletions) - baseline.AvgDeletions) / baseline.StdDevDeletions
 		if math.Abs(zDeletions) > 2.0 {
@@ -149,6 +147,37 @@ func DetectStatisticalAnomalies(pair *git.CommitPair, baseline *RepositoryBaseli
 				ObservedValue: float64(pair.Stats.Deletions),
 				IsSignificant: math.Abs(zDeletions) > 3.0,
 				Description:   "Commit deletions significantly deviate from repository average",
+			})
+		}
+	}
+
+	commitSize := pair.Stats.Additions + pair.Stats.Deletions
+	if baseline.Q1CommitSize > 0 && baseline.Q3CommitSize > 0 {
+		iqr := baseline.Q3CommitSize - baseline.Q1CommitSize
+		upperBound := baseline.Q3CommitSize + int64(1.5*float64(iqr))
+
+		if commitSize > upperBound {
+			anomalies = append(anomalies, &StatisticalAnomaly{
+				Type:          AnomalyIQROutlier,
+				CommitHash:    pair.Current.Hash,
+				Score:         float64(commitSize-upperBound) / float64(iqr),
+				BaselineValue: float64(baseline.MedianCommitSize),
+				ObservedValue: float64(commitSize),
+				IsSignificant: commitSize > upperBound+int64(3*float64(iqr)),
+				Description:   "Commit size is an extreme outlier (IQR method)",
+			})
+		}
+
+		// Extreme outlier for very large commits
+		if commitSize > baseline.Q3CommitSize+int64(3*float64(iqr)) {
+			anomalies = append(anomalies, &StatisticalAnomaly{
+				Type:          AnomalyOutlierSize,
+				CommitHash:    pair.Current.Hash,
+				Score:         float64(commitSize) / float64(baseline.MedianCommitSize),
+				BaselineValue: float64(baseline.MedianCommitSize),
+				ObservedValue: float64(commitSize),
+				IsSignificant: true,
+				Description:   "Extremely large commit size (>3x IQR beyond Q3)",
 			})
 		}
 	}
@@ -165,6 +194,21 @@ func DetectStatisticalAnomalies(pair *git.CommitPair, baseline *RepositoryBaseli
 				ObservedValue: ratio,
 				IsSignificant: true,
 				Description:   "Unusual addition/deletion ratio (predominantly additions)",
+			})
+		}
+	}
+
+	if pair.Stats.FilesChanged > 0 && baseline.AvgFilesChanged > 0 {
+		filesRatio := float64(pair.Stats.FilesChanged) / baseline.AvgFilesChanged
+		if filesRatio > 3.0 && commitSize > baseline.MedianCommitSize {
+			anomalies = append(anomalies, &StatisticalAnomaly{
+				Type:          AnomalyFileDispersion,
+				CommitHash:    pair.Current.Hash,
+				Score:         filesRatio,
+				BaselineValue: baseline.AvgFilesChanged,
+				ObservedValue: float64(pair.Stats.FilesChanged),
+				IsSignificant: filesRatio > 5.0,
+				Description:   "Unusually high number of files changed in single commit",
 			})
 		}
 	}
@@ -193,9 +237,127 @@ func calculatePercentileValue(sortedValues []int64, percentile float64) int64 {
 	return int64(float64(sortedValues[lower])*(1-weight) + float64(sortedValues[upper])*weight)
 }
 
+func DetectTimingClusters(pairs []*git.CommitPair) []*StatisticalAnomaly {
+	anomalies := make([]*StatisticalAnomaly, 0)
+
+	if len(pairs) < 5 {
+		return anomalies
+	}
+
+	rapidCommitWindow := 0
+	for i := 0; i < len(pairs); i++ {
+		if pairs[i].TimeDelta.Minutes() < 5.0 {
+			rapidCommitWindow++
+		} else {
+			if rapidCommitWindow >= 3 {
+				anomalies = append(anomalies, &StatisticalAnomaly{
+					Type:          AnomalyTimingCluster,
+					CommitHash:    pairs[i].Current.Hash,
+					Score:         float64(rapidCommitWindow),
+					BaselineValue: 1.0,
+					ObservedValue: float64(rapidCommitWindow),
+					IsSignificant: rapidCommitWindow >= 5,
+					Description:   "Cluster of rapid-fire commits detected (potential batch processing)",
+				})
+			}
+			rapidCommitWindow = 0
+		}
+	}
+
+	return anomalies
+}
+
+func DetectAuthorBehaviorAnomalies(pairs []*git.CommitPair) []*StatisticalAnomaly {
+	anomalies := make([]*StatisticalAnomaly, 0)
+
+	if len(pairs) < 10 {
+		return anomalies
+	}
+
+	authorStats := make(map[string]*CommitStatistics)
+	authorCommitCounts := make(map[string]int)
+
+	for _, pair := range pairs {
+		email := pair.Current.Email
+		if _, exists := authorStats[email]; !exists {
+			authorStats[email] = &CommitStatistics{}
+		}
+
+		stats := authorStats[email]
+		stats.Additions += pair.Stats.Additions
+		stats.Deletions += pair.Stats.Deletions
+		stats.FilesChanged += pair.Stats.FilesChanged
+		stats.TotalLines += pair.Stats.Additions + pair.Stats.Deletions
+		authorCommitCounts[email]++
+	}
+
+	for _, pair := range pairs {
+		email := pair.Current.Email
+		stats := authorStats[email]
+		count := authorCommitCounts[email]
+
+		if count < 3 {
+			continue
+		}
+
+		avgCommitSize := float64(stats.TotalLines) / float64(count)
+		currentCommitSize := float64(pair.Stats.Additions + pair.Stats.Deletions)
+
+		if currentCommitSize > avgCommitSize*5.0 && currentCommitSize > 500 {
+			anomalies = append(anomalies, &StatisticalAnomaly{
+				Type:          AnomalyAuthorBehavior,
+				CommitHash:    pair.Current.Hash,
+				Score:         currentCommitSize / avgCommitSize,
+				BaselineValue: avgCommitSize,
+				ObservedValue: currentCommitSize,
+				IsSignificant: currentCommitSize > avgCommitSize*10.0,
+				Description:   "Commit size significantly deviates from author's typical pattern",
+			})
+		}
+	}
+
+	return anomalies
+}
+
+func DetectEntropyAnomalies(pair *git.CommitPair) *StatisticalAnomaly {
+	if pair.Stats.Additions == 0 && pair.Stats.Deletions == 0 {
+		return nil
+	}
+
+	total := float64(pair.Stats.Additions + pair.Stats.Deletions)
+	if total == 0 {
+		return nil
+	}
+
+	pAdd := float64(pair.Stats.Additions) / total
+	pDel := float64(pair.Stats.Deletions) / total
+
+	entropy := 0.0
+	if pAdd > 0 {
+		entropy -= pAdd * math.Log2(pAdd)
+	}
+	if pDel > 0 {
+		entropy -= pDel * math.Log2(pDel)
+	}
+
+	if entropy < 0.5 && total > 500 {
+		return &StatisticalAnomaly{
+			Type:          AnomalyEntropy,
+			CommitHash:    pair.Current.Hash,
+			Score:         1.0 - entropy,
+			BaselineValue: 1.0,
+			ObservedValue: entropy,
+			IsSignificant: entropy < 0.3 && total > 1000,
+			Description:   "Low entropy commit (highly imbalanced additions/deletions)",
+		}
+	}
+
+	return nil
+}
+
 type TimingAnomaly struct {
 	CommitHash          string
-	TimeSinceLastCommit float64 // minutes
+	TimeSinceLastCommit float64
 	IsAnomalous         bool
 	Description         string
 }

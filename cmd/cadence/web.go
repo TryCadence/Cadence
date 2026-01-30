@@ -15,7 +15,10 @@ import (
 )
 
 var (
-	webURL string
+	webURL     string
+	verbose    bool
+	outputFile string
+	jsonFormat bool
 )
 
 var webCmd = &cobra.Command{
@@ -30,13 +33,34 @@ Examines content for common AI patterns including:
 - Boilerplate text patterns
 - Lack of nuance and specific details
 
-Returns confidence score and detailed pattern analysis.`,
+Generates detailed reports showing exactly what content was flagged and why.
+Each detected pattern includes:
+- Severity score
+- Detailed reasoning
+- Specific examples found in the content
+- Context showing where patterns appear
+
+Supports both human-readable text output and machine-readable JSON format.
+
+Examples:
+  # Basic analysis with text report
+  cadence web https://example.com
+
+  # Generate JSON report and save to file
+  cadence web https://example.com --json --output report.json
+
+  # Verbose output with content quality metrics
+  cadence web https://example.com --verbose`,
 	Args: cobra.ExactArgs(1),
 	RunE: runWebAnalyze,
 }
 
 func init() {
 	webCmd.Flags().StringVarP(&webURL, "url", "u", "", "website URL to analyze")
+	webCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "show detailed analysis information")
+	webCmd.Flags().StringVarP(&outputFile, "output", "o", "", "write report to file (saved in reports/ directory)")
+	webCmd.Flags().BoolVarP(&jsonFormat, "json", "j", false, "output in JSON format")
+	rootCmd.AddCommand(webCmd)
 }
 
 func runWebAnalyze(cmd *cobra.Command, args []string) error {
@@ -51,12 +75,30 @@ func runWebAnalyze(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to fetch website: %w", err)
 	}
 
+	// Check content quality
+	quality := pageContent.GetContentQuality()
+	if verbose {
+		fmt.Fprintf(os.Stderr, "Content extracted: %d words, %d headings\n", pageContent.WordCount, len(pageContent.Headings))
+		fmt.Fprintf(os.Stderr, "Content quality score: %.2f\n", quality)
+	}
+
+	if pageContent.WordCount < 50 {
+		fmt.Fprintf(os.Stderr, "Warning: Content may be too short for reliable analysis (%d words)\n", pageContent.WordCount)
+	}
+
+	if quality < 0.5 {
+		fmt.Fprintf(os.Stderr, "Warning: Low content quality detected (score: %.2f) - results may be less reliable\n", quality)
+	}
+
 	fmt.Fprintf(os.Stderr, "Analyzing content for AI patterns...\n")
 
 	// Analyze for text slop
 	analyzer := patterns.NewTextSlopAnalyzer()
 	result, err := analyzer.AnalyzeContent(pageContent.GetMainContent())
 	if err != nil {
+		if pageContent.WordCount < 50 {
+			return fmt.Errorf("content too short for analysis: %w (try analyzing a page with more text content)", err)
+		}
 		return fmt.Errorf("analysis failed: %w", err)
 	}
 
@@ -78,9 +120,44 @@ func runWebAnalyze(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Format and output results
-	output := formatWebAnalysisResults(pageContent, result, aiAnalysis)
-	fmt.Println(output)
+	// Generate report using new reporting system
+	reportData := &web.WebReportData{
+		Content:    pageContent,
+		Analysis:   result,
+		AIAnalysis: aiAnalysis,
+		AnalyzedAt: time.Now(),
+	}
+
+	var reporter web.WebReporter
+	if jsonFormat {
+		reporter = &web.JSONWebReporter{}
+	} else {
+		reporter = &web.TextWebReporter{}
+	}
+
+	output, err := reporter.Generate(reportData)
+	if err != nil {
+		return fmt.Errorf("failed to generate report: %w", err)
+	}
+
+	// Write output
+	if outputFile != "" {
+		// Create reports directory if it doesn't exist
+		reportsDir := "reports"
+		if err := os.MkdirAll(reportsDir, 0755); err != nil {
+			return fmt.Errorf("failed to create reports directory: %w", err)
+		}
+
+		// Construct full path
+		fullPath := fmt.Sprintf("%s/%s", reportsDir, outputFile)
+
+		if err := os.WriteFile(fullPath, []byte(output), 0644); err != nil {
+			return fmt.Errorf("failed to write report to file: %w", err)
+		}
+		fmt.Fprintf(os.Stderr, "Report written to %s\n", fullPath)
+	} else {
+		fmt.Print(output)
+	}
 
 	return nil
 }
@@ -127,57 +204,6 @@ Provide a brief assessment (2-3 sentences) of whether this content appears to be
 	}
 
 	return analysis, nil
-}
-
-func formatWebAnalysisResults(content *web.PageContent, result *patterns.TextSlopResult, aiAnalysis string) string {
-	output := `
-╔════════════════════════════════════════════════════════════╗
-║           WEBSITE AI CONTENT ANALYSIS REPORT              ║
-╚════════════════════════════════════════════════════════════╝
-
-URL: ` + content.URL + `
-Title: ` + content.Title + `
-Status Code: ` + fmt.Sprintf("%d", content.StatusCode) + `
-Analyzed At: ` + content.FetchedAt.Format("2006-01-02 15:04:05") + `
-Content Size: ` + fmt.Sprintf("%d characters", len(content.GetMainContent())) + `
-
-ANALYSIS RESULTS
-────────────────────────────────────────────────────────────
-AI-Generated Content Confidence: ` + fmt.Sprintf("%d%%", result.GetConfidenceScore()) + `
-Pattern Count: ` + fmt.Sprintf("%d detected", len(result.Patterns))
-
-	if len(result.Patterns) > 0 {
-		output += `
-
-DETECTED PATTERNS
-────────────────────────────────────────────────────────────`
-		for i, p := range result.Patterns {
-			output += fmt.Sprintf(`
-%d. %s
-   Severity: %.0f%%
-   %s`, i+1, p.Type, p.Severity*100, p.Description)
-		}
-	}
-
-	output += `
-
-ASSESSMENT SUMMARY
-────────────────────────────────────────────────────────────
-` + result.GetSummary()
-
-	if aiAnalysis != "" {
-		output += `
-
-AI EXPERT ANALYSIS
-────────────────────────────────────────────────────────────
-` + aiAnalysis
-	}
-
-	output += `
-════════════════════════════════════════════════════════════
-`
-
-	return output
 }
 
 func truncateText(text string, maxChars int) string {

@@ -89,8 +89,11 @@ Output shows commits with unusual patterns, confidence scores, and reasons why e
 # Detect AI-generated content on a website
 ./cadence web https://example.com
 
+# Generate JSON report and save to file
+./cadence web https://example.com --json --output report.json
+
 # With AI expert analysis (requires CADENCE_AI_KEY)
-./cadence web https://example.com --config cadence.yml
+./cadence web https://example.com --config cadence.yml --verbose
 ```
 
 The `cadence web` command analyzes website content for common AI patterns:
@@ -103,7 +106,17 @@ The `cadence web` command analyzes website content for common AI patterns:
 - **Lack of nuance**: Few specific examples, no citations, vague references
 - **Over-explanation**: Excessive transition phrases, explains obvious concepts
 
-**Output**: Confidence score (0-100%), detailed pattern breakdown, and severity ratings
+**Output Options**:
+- Text format (default) - Human-readable with detailed pattern breakdown
+- JSON format (`--json`) - Machine-readable with full metadata
+- File output (`--output <file>`) - Save report to file instead of stdout
+
+**Report Features**:
+- Confidence score (0-100%) with assessment
+- Detailed pattern breakdown with severity ratings
+- Specific examples of flagged content (up to 5 per pattern)
+- Context showing where patterns appear in the content
+- Content quality metrics (word count, headings, quality score)
 
 
 
@@ -403,11 +416,15 @@ internal/
   reporter/           - Output formatting (text, JSON)
   config/             - Configuration loading
   webhook/            - Webhook server (GitHub, GitLab)
+  web/                - Website content fetching and analysis
+    patterns/         - Web pattern detection strategies
   errors/             - Error types
 test/                 - Integration tests
 ```
 
 ### Adding Custom Detection Strategies
+
+**For Git Commit Analysis:**
 
 Create a new strategy in `internal/detector/`:
 
@@ -427,3 +444,46 @@ func (s *CustomStrategy) Detect(pair *git.CommitPair, stats *metrics.RepositoryS
 ```
 
 Register it in `internal/detector/detector.go` and it will automatically be used.
+
+**For Web Content Analysis:**
+
+Create a custom pattern strategy:
+
+```go
+import "github.com/codemeapixel/cadence/internal/web/patterns"
+
+// Create custom strategy
+customStrategy := patterns.NewCustomPatternStrategy(
+    "marketing_speak",
+    []string{"synergy", "innovative", "disruptive"},
+    2, // threshold
+)
+
+// Register with analyzer
+analyzer := patterns.NewTextSlopAnalyzer()
+analyzer.RegisterStrategy(customStrategy)
+```
+
+Or implement the `WebPatternStrategy` interface for more complex logic:
+
+```go
+type MyCustomStrategy struct{}
+
+func (s *MyCustomStrategy) Name() string {
+    return "my_custom_pattern"
+}
+
+func (s *MyCustomStrategy) Detect(content string, wordCount int) *patterns.DetectionResult {
+    // Your detection logic here
+    if detected {
+        return &patterns.DetectionResult{
+            Detected:    true,
+            Type:        s.Name(),
+            Severity:    0.8,
+            Description: "Custom pattern detected",
+            Examples:    []string{"example1", "example2"},
+        }
+    }
+    return nil
+}
+```
