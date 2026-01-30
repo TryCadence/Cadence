@@ -7,7 +7,6 @@ import (
 	"github.com/codemeapixel/cadence/internal/metrics"
 )
 
-// VelocityStrategy detects commits with unusually high coding velocity
 type VelocityStrategy struct {
 	maxAdditionsPerMin float64
 	maxDeletionsPerMin float64
@@ -52,7 +51,6 @@ func (s *VelocityStrategy) Detect(pair *git.CommitPair, repoStats *metrics.Repos
 	return false, ""
 }
 
-// SizeStrategy detects commits that are suspiciously large
 type SizeStrategy struct {
 	suspiciousAdditions int64
 	suspiciousDeletions int64
@@ -87,7 +85,6 @@ func (s *SizeStrategy) Detect(pair *git.CommitPair, repoStats *metrics.Repositor
 	return false, ""
 }
 
-// TimingStrategy detects commits that are too close together
 type TimingStrategy struct {
 	minTimeDeltaSeconds int64
 }
@@ -115,9 +112,8 @@ func (s *TimingStrategy) Detect(pair *git.CommitPair, repoStats *metrics.Reposit
 	return false, ""
 }
 
-// MergeCommitStrategy filters out merge commits (commits with multiple parents)
 type MergeCommitStrategy struct {
-	flagAsSuspicious bool // If true, flag merges as potential rebase markers; if false, skip them
+	flagAsSuspicious bool
 }
 
 func NewMergeCommitStrategy(flag bool) *MergeCommitStrategy {

@@ -5,6 +5,122 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-01-30
+
+### Added
+
+#### Web Content Analysis Enhancements
+- **Structured Reporting System**: New comprehensive reporting for web analysis
+  - `JSONWebReporter` - Machine-readable JSON output with full metadata
+  - `TextWebReporter` - Human-readable formatted text reports
+  - `WebReportData` - Structured data format for analysis results
+- **Detailed Flagged Content Reports**: Each detected pattern now includes:
+  - Pattern type and severity score
+  - Detailed reasoning for why content was flagged
+  - Specific examples found in the content (up to 5 per pattern)
+  - Context extraction showing where patterns appear (150 chars surrounding)
+- **Pattern-Based Architecture**: Extensible detection system for web content
+  - `WebPatternStrategy` interface for pluggable detection strategies
+  - `WebPatternRegistry` for managing and executing detection strategies
+  - 10 default strategies automatically registered
+  - Custom pattern support via `RegisterStrategy()`
+- **CLI Output Options**: New flags for web analysis command
+  - `--json, -j` - Output in JSON format
+  - `--output, -o <file>` - Write report to file instead of stdout
+  - Existing `--verbose, -v` - Show detailed content quality metrics
+
+#### Pattern Detection Strategies
+New modular web pattern detection system with 10 built-in strategies:
+1. **OverusedPhrasesStrategy** - Detects generic AI phrases ("in today's world", "furthermore")
+2. **GenericLanguageStrategy** - Identifies business jargon ("leverage", "synergy", "utilize")
+3. **ExcessiveStructureStrategy** - Flags over-formatted content with too many lists
+4. **PerfectGrammarStrategy** - Detects suspiciously consistent sentence structures
+5. **BoilerplateTextStrategy** - Identifies template phrases ("welcome to", "let's explore")
+6. **RepetitivePatternsStrategy** - Catches repetitive sentence structures
+7. **MissingNuanceStrategy** - Detects excessive use of absolute terms
+8. **ExcessiveTransitionsStrategy** - Flags overuse of transition words
+9. **UniformSentenceLengthStrategy** - Identifies unnatural sentence length consistency
+10. **AIVocabularyStrategy** - Detects AI-characteristic vocabulary ("delve", "tapestry", "realm")
+
+#### Technical Infrastructure
+- **Pattern Registry**: `internal/web/patterns/` package with strategy management
+  - Automatic strategy registration on initialization
+  - Easy addition of custom detection patterns
+  - Example custom strategy included
+- **Refactored TextSlopAnalyzer**: Now uses registry-based detection
+  - Cleaner, more maintainable codebase
+  - Supports `RegisterStrategy()` for custom patterns
+  - Backwards compatible with existing code
+- **Reports Directory Management**: Automatic creation of `reports/` directory
+  - All web analysis reports saved to `reports/` directory by default
+  - Directory created automatically if it doesn't exist
+  - Clean separation of reports from source code
+
+### Changed
+- **Web Analysis Output**: Now uses structured reporting system instead of simple formatted text
+- **Pattern Detection**: Moved from monolithic analyzer to modular strategy-based system
+- **Code Organization**: Separated detection strategies into individual files for maintainability
+- **Report Storage**: Web reports now automatically saved to `reports/` directory when using `--output`
+
+### Fixed
+- **Anomaly Detection Baseline**: Fixed incorrect baseline calculation in statistical anomaly strategy
+  - Was attempting to use non-existent `RepositoryStats` fields
+  - Now properly uses `CalculateBaseline()` from commit pairs
+  - Fixed standard deviation calculation (was using IQR instead)
+- **Web Command Flag Registration**: Fixed `--json` and `--output` flags not being recognized
+  - Flags were defined but not properly registered to the command
+  - Added missing `rootCmd.AddCommand(webCmd)` call in init()
+- **Variable Shadowing**: Fixed variable shadowing issue in `web/fetcher.go` causing compile error
+- **Duplicate Code Block**: Removed duplicate if statement in `ai_slop_strategies.go`
+- **Unused Variables**: Removed unused `lowerBound` variable in anomaly detection
+- **Comment Cleanup**: Removed all comments from detector folder for cleaner codebase
+
+### Technical Details
+- **New Packages**:
+  - `internal/web/patterns/` - Web content detection strategies
+  - `internal/web/reporter.go` - Reporting system for web analysis
+- **Updated Files**:
+  - `cmd/cadence/web.go` - Added JSON/file output support
+  - `internal/detector/patterns/text_slop_analyzer.go` - Refactored to use registry
+  - `internal/detector/patterns/anomaly_strategy.go` - Fixed baseline calculation
+- **New Files**:
+  - `internal/web/patterns/strategy.go` - Core interfaces and registry
+  - `internal/web/patterns/overused_phrases.go` - Overused phrases detection
+  - `internal/web/patterns/generic_language.go` - Generic language detection
+  - `internal/web/patterns/placeholder_strategies.go` - 8 additional strategies
+  - `internal/web/patterns/custom_example.go` - Example custom strategy
+
+### Usage Examples
+```bash
+# Generate JSON report and save to file
+cadence web https://example.com --json --output report.json
+
+# Human-readable text report
+cadence web https://example.com
+
+# With verbose content quality metrics
+cadence web https://example.com --verbose
+
+# JSON output to stdout for piping
+cadence web https://example.com --json | jq '.flagged_items'
+```
+
+### For Developers
+Adding custom web content detection patterns is now straightforward:
+
+```go
+// Create custom strategy
+customStrategy := patterns.NewCustomPatternStrategy(
+    "marketing_speak",
+    []string{"synergy", "innovative", "disruptive"},
+    2, // threshold
+)
+
+// Register with analyzer
+analyzer := patterns.NewTextSlopAnalyzer()
+analyzer.RegisterStrategy(customStrategy)
+```
+
 ## [0.2.0] - 2026-01-30
 
 ### Added
@@ -325,6 +441,7 @@ cadence web https://example.com --config cadence.yml
 
 ---
 
+[0.2.1]: https://github.com/CodeMeAPixel/Cadence/releases/tag/v0.2.1
 [0.2.0]: https://github.com/CodeMeAPixel/Cadence/releases/tag/v0.2.0
 [0.1.2]: https://github.com/CodeMeAPixel/Cadence/releases/tag/v0.1.2
 [0.1.1]: https://github.com/CodeMeAPixel/Cadence/releases/tag/v0.1.1
