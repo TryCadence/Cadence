@@ -5,6 +5,60 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-01-29
+
+### Added
+
+#### Website AI Content Analysis
+- **Web Content Analysis**: New `cadence web` command to analyze websites for AI-generated text
+- **Text Slop Detection**: Identifies common AI patterns in written content:
+  - Overused phrases and generic business language
+  - Excessive structure and formatting patterns
+  - Suspiciously perfect grammar without contractions
+  - Boilerplate and marketing language
+  - Repetitive sentence structures
+  - Lack of specific examples or citations
+  - Excessive transition phrases
+- **Pattern Analysis**: Detailed breakdown of detected AI indicators with severity scores
+- **Confidence Scoring**: Overall AI-generated content confidence (0-100%)
+- **HTML Parsing**: Extracts and analyzes main content from websites
+- **Optional AI Expert Analysis**: Integration with OpenAI for additional validation
+- **User-friendly Reports**: Formatted ASCII reports with pattern details
+
+### Technical Details
+- **New Package**: `internal/web` for website fetching and content extraction
+- **New Analyzer**: `TextSlopAnalyzer` in `internal/detector/patterns/` for text-based detection
+- **New CLI Command**: `cadence web <url>` for analyzing websites
+- **Dependencies Added**: github.com/PuerkitoBio/goquery for HTML parsing
+
+### Usage Examples
+```bash
+# Analyze a website for AI-generated content
+cadence web https://example.com
+
+# With AI expert analysis enabled (requires CADENCE_AI_KEY)
+cadence web https://example.com --config cadence.yml
+```
+
+## [0.1.2] - 2026-01-28
+
+### Changed
+
+#### Code Quality Improvements
+- **Variable Naming**: Improved generic variable names for better readability
+  - Renamed `jobsData` to `jobList` in webhook handlers
+  - Fixed inconsistent variable naming in test files
+- **Comment Cleanup**: Removed verbose TODO comments and replaced with concise documentation
+  - Streamlined webhook handler placeholder comments
+  - Eliminated AI slop patterns identified by our own detection system
+- **Code Consistency**: Applied consistent naming conventions across codebase
+- **Error Handling**: Reviewed and maintained idiomatic Go error handling patterns
+
+### Fixed
+- Fixed unused variable `reportData` in text reporter tests
+- Eliminated AI slop patterns detected in our own codebase
+- Improved code clarity without breaking functionality
+
 ## [0.1.1] - 2026-01-28
 
 ### Added
@@ -206,6 +260,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[0.2.0]: https://github.com/CodeMeAPixel/Cadence/releases/tag/v0.2.0
 [0.1.2]: https://github.com/CodeMeAPixel/Cadence/releases/tag/v0.1.2
 [0.1.1]: https://github.com/CodeMeAPixel/Cadence/releases/tag/v0.1.1
 [0.1.0]: https://github.com/CodeMeAPixel/Cadence/releases/tag/v0.1.0

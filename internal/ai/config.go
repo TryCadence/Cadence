@@ -3,6 +3,8 @@ package ai
 import (
 	"context"
 	"os"
+
+	"github.com/sashabaranov/go-openai"
 )
 
 // Config holds AI service configuration
@@ -46,7 +48,11 @@ func NewAnalyzer(cfg *Config) (Analyzer, error) {
 
 	switch cfg.Provider {
 	case "openai":
-		return NewOpenAIAnalyzer(cfg)
+		client := &openai.Client{}
+		return &OpenAIAnalyzer{
+			client: client,
+			config: cfg,
+		}, nil
 	default:
 		return &NoOpAnalyzer{}, nil
 	}

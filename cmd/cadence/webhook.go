@@ -39,8 +39,6 @@ func init() {
 	webhookCmd.Flags().IntVar(&webhookFlags.maxWorkers, "workers", 0, "number of concurrent workers (default: 4)")
 	webhookCmd.Flags().IntVar(&webhookFlags.readTimeout, "read-timeout", 0, "request read timeout in seconds (default: 30)")
 	webhookCmd.Flags().IntVar(&webhookFlags.writeTimeout, "write-timeout", 0, "request write timeout in seconds (default: 30)")
-
-	rootCmd.AddCommand(webhookCmd)
 }
 
 func runWebhookServer(cmd *cobra.Command, args []string) error {

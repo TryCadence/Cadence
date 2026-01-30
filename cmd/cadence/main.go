@@ -20,13 +20,19 @@ func main() {
 
 var rootCmd = &cobra.Command{
 	Use:   "cadence",
-	Short: "Detect potential AI-generated code in git repositories",
-	Long: `Cadence analyzes git repositories to detect potential AI-generated code
-by examining commit patterns, code velocity, and statistical anomalies`,
+	Short: "Detect AI-generated content in git repositories and websites",
+	Long: `Cadence analyzes git repositories and websites to detect AI-generated content.
+
+Capabilities:
+  • Git commits: Detects suspicious commits via patterns, velocity, and anomalies
+  • Websites: Analyzes page content for AI-generated text patterns
+  • Optional AI validation: Uses OpenAI GPT-4o-mini for expert analysis
+
+Use 'cadence --help' to see all available commands.`,
 }
 
 func init() {
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 	rootCmd.PersistentFlags().StringVar(&configFile, "config", "", "config file path")
-	rootCmd.AddCommand(analyzeCmd, configCmd, versionCmd, webhookCmd)
+	rootCmd.AddCommand(analyzeCmd, webCmd, configCmd, versionCmd, webhookCmd)
 }

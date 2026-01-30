@@ -23,16 +23,67 @@ type OpenAIAnalyzer struct {
 }
 
 // NewOpenAIAnalyzer creates a new OpenAI analyzer
-func NewOpenAIAnalyzer(cfg *Config) (*OpenAIAnalyzer, error) {
-	if cfg.APIKey == "" {
-		return nil, fmt.Errorf("OpenAI API key is required")
+func NewOpenAIAnalyzer(apiKeyOrConfig interface{}, model ...string) (*OpenAIAnalyzer, error) {
+	var apiKey, modelStr string
+
+	// Handle both old (Config) and new (string, string) signatures
+	switch v := apiKeyOrConfig.(type) {
+	case *Config:
+		if v.APIKey == "" {
+			return nil, fmt.Errorf("OpenAI API key is required")
+		}
+		apiKey = v.APIKey
+		modelStr = v.Model
+	case string:
+		apiKey = v
+		if len(model) > 0 {
+			modelStr = model[0]
+		}
+		if modelStr == "" {
+			modelStr = "gpt-4o-mini"
+		}
+	default:
+		return nil, fmt.Errorf("invalid argument to NewOpenAIAnalyzer")
 	}
 
-	client := openai.NewClient(cfg.APIKey)
+	client := openai.NewClient(apiKey)
 	return &OpenAIAnalyzer{
 		client: client,
-		config: cfg,
+		config: &Config{
+			APIKey:    apiKey,
+			Model:     modelStr,
+			MaxTokens: 1024,
+		},
 	}, nil
+}
+
+// AnalyzeWithSystemPrompt performs analysis with custom system and user prompts
+func (a *OpenAIAnalyzer) AnalyzeWithSystemPrompt(ctx context.Context, systemPrompt, userPrompt string) (string, error) {
+	resp, err := a.client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
+		Model: a.config.Model,
+		Messages: []openai.ChatCompletionMessage{
+			{
+				Role:    openai.ChatMessageRoleSystem,
+				Content: systemPrompt,
+			},
+			{
+				Role:    openai.ChatMessageRoleUser,
+				Content: userPrompt,
+			},
+		},
+		MaxTokens:   a.config.MaxTokens,
+		Temperature: 0.3,
+	})
+
+	if err != nil {
+		return "", fmt.Errorf("failed to call OpenAI API: %w", err)
+	}
+
+	if len(resp.Choices) == 0 {
+		return "", fmt.Errorf("no response from OpenAI")
+	}
+
+	return resp.Choices[0].Message.Content, nil
 }
 
 // AnalyzeSuspiciousCode sends suspicious code to OpenAI for analysis
