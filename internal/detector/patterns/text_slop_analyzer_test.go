@@ -33,7 +33,7 @@ Let me know if you run into the same issue!`,
 		},
 		{
 			name:             "minimal content",
-			content:          "Hello world",
+			content:          "Hello world this is some minimal content that is just barely enough words to meet the minimum requirement for analysis. This is a test of the content analyzer system that needs to have more text. We are adding additional content here to make sure we definitely have enough words now.",
 			expectConfidence: false,
 			minExpectedScore: 0,
 		},
@@ -65,9 +65,15 @@ Let me know if you run into the same issue!`,
 
 func TestTextSlopAnalyzer_DetectOverusedPhrases(t *testing.T) {
 	analyzer := NewTextSlopAnalyzer()
-	content := "In today's world, it is important to note that furthermore, in conclusion..."
+	content := "In today's world, it is important to note that furthermore, in conclusion, we must leverage our innovative platform to provide transformative solutions. Our revolutionary system provides unprecedented value and synergy across all stakeholder touchpoints and business objectives through innovative methodologies and advanced technical capabilities in today's dynamic business environment now."
 
-	result, _ := analyzer.AnalyzeContent(content)
+	result, err := analyzer.AnalyzeContent(content)
+	if err != nil {
+		t.Fatalf("AnalyzeContent() error = %v", err)
+	}
+	if result == nil {
+		t.Fatalf("AnalyzeContent() returned nil result")
+	}
 	if len(result.Patterns) == 0 {
 		t.Errorf("Expected to detect overused phrases, found none")
 	}
@@ -75,9 +81,15 @@ func TestTextSlopAnalyzer_DetectOverusedPhrases(t *testing.T) {
 
 func TestTextSlopAnalyzer_DetectGenericLanguage(t *testing.T) {
 	analyzer := NewTextSlopAnalyzer()
-	content := "We provide value to our stakeholders. We maximize efficiency and optimize workflows. Utilize our solution to ensure results."
+	content := "We provide value to our stakeholders and optimize outcomes across markets worldwide. We maximize efficiency and optimize workflows for improved performance outcomes daily basis. Utilize our solution to ensure results and success. Our service leverages best practices to facilitate growth and drive engagement across all verticals and markets worldwide today."
 
-	result, _ := analyzer.AnalyzeContent(content)
+	result, err := analyzer.AnalyzeContent(content)
+	if err != nil {
+		t.Fatalf("AnalyzeContent() error = %v", err)
+	}
+	if result == nil {
+		t.Fatalf("AnalyzeContent() returned nil result")
+	}
 	if len(result.Patterns) == 0 {
 		t.Errorf("Expected to detect generic language, found none")
 	}
