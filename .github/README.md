@@ -4,9 +4,12 @@ Detects AI-generated content in **git repositories** and **websites**.
 
 Analyze suspicious commits via code patterns, velocity anomalies, and statistical markers. Scan websites for AI-generated text using pattern detection and optional OpenAI validation.
 
-**Status**: Ready to use | **Tests**: 70+ passing | **Go**: 1.23.0
+**Status**: Ready to use | **Tests**: 70+ passing | **Go**: 1.23.0  
+**📖 Full Documentation**: [noslop.tech](https://noslop.tech) | [Quick Start](https://noslop.tech/docs/quick-start) | [CLI Commands](https://noslop.tech/docs/cli-commands)
 
 ## Quick Start
+
+For detailed setup instructions, see [Installation Guide](https://noslop.tech/docs/installation).
 
 ### Install
 
@@ -53,6 +56,11 @@ Version injection is automatic when using `make build` or the platform-specific 
 Output shows commits with unusual patterns, confidence scores, and reasons why each was flagged.
 
 ## Usage
+
+For in-depth guides and examples, see:
+- [Git Analysis Guide](https://noslop.tech/docs/git-analysis-guide)
+- [Web Analysis Guide](https://noslop.tech/docs/web-analysis-guide)
+- [CLI Commands Reference](https://noslop.tech/docs/cli-commands)
 
 ### Analyze a Repository
 
@@ -167,6 +175,8 @@ Found 1 suspicious commit(s):
 
 ## Detection Strategies
 
+For detailed strategy explanations, see [Detection Strategies Guide](https://noslop.tech/docs/detection-strategies).
+
 Cadence flags commits that are suspicious based on:
 
 | Strategy | What it looks for | Indicator |
@@ -231,6 +241,8 @@ AI analysis appears in both text and JSON reports:
 
 ## Configuration
 
+For advanced configuration options, see [Configuration Guide](https://noslop.tech/docs/configuration).
+
 ### Config File (YAML)
 
 Create a `cadence.yaml`:
@@ -282,6 +294,8 @@ export CADENCE_WEBHOOK_MAX_WORKERS=4
 ```
 
 ## Webhook Server
+
+For webhook setup and integration details, see [API Webhooks Guide](https://noslop.tech/docs/api-webhooks).
 
 ### Start the Server
 
@@ -368,6 +382,8 @@ A: Webhooks work with any Git host. Self-hosted instances need network access to
 A: Yes. Detection strategies are pluggable interfaces in `internal/detector/`. Add custom logic easily.
 
 ## Development
+
+For development setup and contribution guidelines, see [Build & Development Guide](https://noslop.tech/docs/build-development).
 
 ### Build
 
@@ -487,3 +503,15 @@ func (s *MyCustomStrategy) Detect(content string, wordCount int) *patterns.Detec
     return nil
 }
 ```
+
+## Resources
+
+- **Documentation**: [noslop.tech](https://noslop.tech)
+- **Troubleshooting**: [Troubleshooting Guide](https://noslop.tech/docs/troubleshooting-guide)
+- **Security**: [Security Documentation](https://noslop.tech/docs/security)
+- **Contributing**: [Contributing Guide](https://noslop.tech/docs/contributing)
+- **GitHub**: [CodeMeAPixel/Cadence](https://github.com/CodeMeAPixel/Cadence)
+
+---
+
+*Made with ❤️ by [CodeMeAPixel](https://codemeapixel.dev) | Contact: hey@codemeapixel.dev*
