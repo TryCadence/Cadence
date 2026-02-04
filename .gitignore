@@ -20,6 +20,7 @@ reports/*
 *.test
 
 # Output of the go coverage tool
+coverage
 *.out
 
 # Dependency directories

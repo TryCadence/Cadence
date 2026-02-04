@@ -24,7 +24,7 @@ endif
 
 # Unix/Linux/macOS build with version injection
 ifneq ($(OS_TYPE),windows)
-VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "0.1.0")
+VERSION := $(shell git describe --tags 2>/dev/null | sed 's/-[0-9]*-g[0-9a-f]*$$//' || echo "0.1.0")
 COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_TIME := $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
 LDFLAGS := -ldflags="-X github.com/trycadence/cadence/internal/version.Version=$(VERSION) -X github.com/trycadence/cadence/internal/version.GitCommit=$(COMMIT) -X github.com/trycadence/cadence/internal/version.BuildTime=$(BUILD_TIME)"
@@ -56,6 +56,26 @@ endif
 test:
 	go test ./...
 
+coverage:
+	go test -v -coverprofile=coverage.out -covermode=atomic ./...
+	go tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report generated: coverage.html"
+
+coverage-report:
+	go test -v -coverprofile=coverage.out -covermode=atomic ./...
+	go tool cover -func=coverage.out
+
+coverage-strict:
+	go test -v -coverprofile=coverage.out -covermode=atomic ./...
+	@COVERAGE=$$(go tool cover -func=coverage.out | grep total | awk '{print $$3}' | sed 's/%//'); \
+	THRESHOLD=85; \
+	if [ "$$(echo "$$COVERAGE < $$THRESHOLD" | bc -l)" -eq 1 ]; then \
+		echo "⚠️  Coverage $$COVERAGE% is below $$THRESHOLD% threshold"; \
+		exit 1; \
+	else \
+		echo "✓ Coverage $$COVERAGE% meets threshold"; \
+	fi
+
 fmt:
 	go fmt ./...
 
@@ -72,17 +92,20 @@ run:
 	go run ./cmd/cadence
 
 clean:
-	@rm -rf bin
+	@rm -rf bin coverage.out coverage.html
 
 help:
 	@echo "Cadence Makefile targets:"
-	@echo "  make build   - Build binary with automatic version injection from git tags"
-	@echo "  make install - Install binary to \$$GOPATH/bin"
-	@echo "  make test    - Run all tests"
-	@echo "  make fmt     - Format code"
-	@echo "  make tidy    - Tidy dependencies"
-	@echo "  make lint    - Run linter"
-	@echo "  make vet     - Run go vet"
-	@echo "  make run     - Run application"
-	@echo "  make clean   - Clean build artifacts"
+	@echo "  make build           - Build binary with automatic version injection from git tags"
+	@echo "  make install         - Install binary to \$$GOPATH/bin"
+	@echo "  make test            - Run all tests"
+	@echo "  make coverage        - Run tests with coverage report (generates coverage.html)"
+	@echo "  make coverage-report - Run tests and display coverage summary"
+	@echo "  make coverage-strict - Run tests and enforce 85% coverage threshold"
+	@echo "  make fmt             - Format code"
+	@echo "  make tidy            - Tidy dependencies"
+	@echo "  make lint            - Run linter"
+	@echo "  make vet             - Run go vet"
+	@echo "  make run             - Run application"
+	@echo "  make clean           - Clean build artifacts and coverage files"
 

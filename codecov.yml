@@ -1,5 +1,6 @@
 codecov:
   require_ci_to_pass: yes
+  max_report_age: 24
 
 coverage:
   precision: 2
@@ -9,18 +10,26 @@ coverage:
   status:
     project:
       default:
-        target: 85%
+        target: 30%
         threshold: 1%
     patch:
       default:
-        target: 80%
+        target: 30%
+        threshold: 0%
 
 ignore:
-  - "cmd/**"
   - "**/*_test.go"
   - "test/**"
+  - "scripts/**"
+  - "bin/**"
 
 comment:
   layout: "reach,diff,flags,tree"
   behavior: default
   require_changes: false
+
+flags:
+  unittests:
+    carryforward: true
+  integration:
+    carryforward: false

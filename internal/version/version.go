@@ -12,7 +12,7 @@ func String() string {
 
 func Full() string {
 	str := "Cadence " + Version
-	if GitCommit != "unknown" && len(GitCommit) > 0 {
+	if GitCommit != "unknown" && GitCommit != "" {
 		commit := GitCommit
 		if len(commit) > 8 {
 			commit = commit[:8]

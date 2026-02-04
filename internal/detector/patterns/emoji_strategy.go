@@ -41,7 +41,7 @@ func countEmojis(text string) int {
 }
 
 func isEmojiHeavy(text string) bool {
-	if len(text) == 0 {
+	if text == "" {
 		return false
 	}
 
@@ -56,7 +56,7 @@ func isEmojiHeavy(text string) bool {
 
 func hasEmojiOnlyCommit(text string) bool {
 	trimmed := strings.TrimSpace(text)
-	if len(trimmed) == 0 {
+	if trimmed == "" {
 		return false
 	}
 
@@ -75,7 +75,7 @@ func hasEmojiOnlyCommit(text string) bool {
 	return emojiCount > nonEmojiChars*2
 }
 
-func (s *EmojiPatternStrategy) Detect(pair *git.CommitPair, repoStats *metrics.RepositoryStats) (bool, string) {
+func (s *EmojiPatternStrategy) Detect(pair *git.CommitPair, repoStats *metrics.RepositoryStats) (isSuspicious bool, reason string) {
 	if !s.enabled || pair == nil || pair.Current == nil {
 		return false, ""
 	}

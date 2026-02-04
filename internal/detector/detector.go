@@ -54,15 +54,17 @@ func New(thresholds *Thresholds) (*Detector, error) {
 		strategies = append(strategies, NewPrecisionStrategy(0.85))
 	}
 
-	strategies = append(strategies, NewCommitMessageStrategy())
-	strategies = append(strategies, NewNamingPatternStrategy())
-	strategies = append(strategies, NewStructuralConsistencyStrategy())
-	strategies = append(strategies, NewBurstPatternStrategy(10))
-	strategies = append(strategies, NewErrorHandlingPatternStrategy())
-	strategies = append(strategies, NewTemplatePatternStrategy())
-	strategies = append(strategies, NewFileExtensionPatternStrategy())
-	strategies = append(strategies, NewStatisticalAnomalyStrategy())
-	strategies = append(strategies, NewTimingAnomalyStrategy())
+	strategies = append(strategies,
+		NewCommitMessageStrategy(),
+		NewNamingPatternStrategy(),
+		NewStructuralConsistencyStrategy(),
+		NewBurstPatternStrategy(10),
+		NewErrorHandlingPatternStrategy(),
+		NewTemplatePatternStrategy(),
+		NewFileExtensionPatternStrategy(),
+		NewStatisticalAnomalyStrategy(),
+		NewTimingAnomalyStrategy(),
+	)
 
 	return &Detector{
 		thresholds: thresholds,

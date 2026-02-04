@@ -25,7 +25,7 @@ func (s *HeadingHierarchyStrategy) Detect(content string, wordCount int) *Detect
 		return &DetectionResult{Detected: false}
 	}
 
-	var headingLevels []int
+	headingLevels := make([]int, 0, len(matches))
 	for _, match := range matches {
 		level, _ := strconv.Atoi(match[1])
 		headingLevels = append(headingLevels, level)

@@ -27,7 +27,7 @@ func (s *ExcessiveStructureStrategy) Detect(content string, wordCount int) *Dete
 			strings.HasPrefix(trimmed, "• ") || regexp.MustCompile(`^\d+\.\s`).MatchString(trimmed) {
 			listItemCount++
 		}
-		if strings.HasPrefix(trimmed, "#") || (len(trimmed) > 0 && len(trimmed) < 60 && strings.ToUpper(trimmed) == trimmed) {
+		if strings.HasPrefix(trimmed, "#") || (trimmed != "" && len(trimmed) < 60 && strings.ToUpper(trimmed) == trimmed) {
 			headingCount++
 		}
 	}

@@ -7,8 +7,11 @@ param(
 )
 
 try {
-    $VERSION = & git describe --tags --always --dirty 2>$null
-    if (-not $VERSION) {
+    $rawVersion = & git describe --tags 2>$null
+    if ($rawVersion) {
+        # Remove -N-gHASH suffix to get just the tag
+        $VERSION = $rawVersion -replace '-[0-9]+-g[0-9a-f]+$', ''
+    } else {
         $VERSION = "0.1.0"
     }
 } catch {

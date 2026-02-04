@@ -58,7 +58,7 @@ func CalculateBaseline(pairs []*git.CommitPair) *RepositoryBaseline {
 
 	var sumAdditions, sumDeletions, sumFiles float64
 	var additionRatios []float64
-	var commitSizes []int64
+	commitSizes := make([]int64, 0, len(pairs))
 
 	for _, pair := range pairs {
 		stats := pair.Stats
@@ -369,7 +369,7 @@ func DetectTimingAnomalies(pairs []*git.CommitPair) []*TimingAnomaly {
 		return anomalies
 	}
 
-	var timeDeltasMinutes []float64
+	timeDeltasMinutes := make([]float64, 0, len(pairs))
 	for _, pair := range pairs {
 		timeDeltasMinutes = append(timeDeltasMinutes, pair.TimeDelta.Minutes())
 	}

@@ -56,7 +56,7 @@ func NewAnalyzer(cfg *Config) (Analyzer, error) {
 
 type NoOpAnalyzer struct{}
 
-func (n *NoOpAnalyzer) AnalyzeSuspiciousCode(ctx context.Context, commitHash string, additions string) (string, error) {
+func (n *NoOpAnalyzer) AnalyzeSuspiciousCode(ctx context.Context, commitHash, additions string) (string, error) {
 	return "", nil
 }
 

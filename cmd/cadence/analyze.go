@@ -67,10 +67,7 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 	// Handle remote repositories (GitHub URLs)
 	if isRemoteRepo(repoPath) {
 		// Parse GitHub web URLs to git clone URLs
-		gitURL, extractedBranch, err := parseGitHubURL(repoPath)
-		if err != nil {
-			return fmt.Errorf("failed to parse repository URL: %w", err)
-		}
+		gitURL, extractedBranch := parseGitHubURL(repoPath)
 
 		// Use extracted branch if no branch flag was provided
 		if analyzeBranch == "" && extractedBranch != "" {
@@ -183,7 +180,7 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 
 	// Create reports directory if it doesn't exist
 	reportsDir := "reports"
-	if err := os.MkdirAll(reportsDir, 0o755); err != nil {
+	if err := os.MkdirAll(reportsDir, 0o750); err != nil {
 		return fmt.Errorf("failed to create reports directory: %w", err)
 	}
 
@@ -201,24 +198,24 @@ func isRemoteRepo(path string) bool {
 	return len(path) > 7 && (path[:7] == "http://" || (len(path) > 8 && path[:8] == "https://"))
 }
 
-func parseGitHubURL(url string) (string, string, error) {
+func parseGitHubURL(url string) (gitURL, branch string) {
 	// Handle GitHub web URLs like https://github.com/owner/repo/blob/branch/path
 	// Convert to git clone URL: https://github.com/owner/repo.git
 	// Also extract branch if present
 
 	if !strings.Contains(url, "github.com") {
-		return url, "", nil
+		return url, ""
 	}
 
 	parts := strings.Split(url, "/")
 	if len(parts) < 5 {
-		return url, "", nil
+		return url, ""
 	}
 
 	// Extract owner and repo
 	owner := parts[3]
 	repo := parts[4]
-	branch := ""
+	branch = ""
 
 	// If it's a blob/tree URL, extract the branch
 	if len(parts) > 5 && (parts[5] == "blob" || parts[5] == "tree") {
@@ -228,11 +225,11 @@ func parseGitHubURL(url string) (string, string, error) {
 	}
 
 	// Construct git clone URL
-	gitURL := fmt.Sprintf("https://github.com/%s/%s.git", owner, repo)
-	return gitURL, branch, nil
+	gitURL = fmt.Sprintf("https://github.com/%s/%s.git", owner, repo)
+	return
 }
-func cloneRemoteRepo(repoURL string) (string, func() error, error) {
-	tempDir, err := os.MkdirTemp("", "cadence-*")
+func cloneRemoteRepo(repoURL string) (tempDir string, cleanup func() error, err error) {
+	tempDir, err = os.MkdirTemp("", "cadence-*")
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to create temp directory: %w", err)
 	}
@@ -244,11 +241,11 @@ func cloneRemoteRepo(repoURL string) (string, func() error, error) {
 
 	_, err = gogit.PlainClone(tempDir, false, cloneOpts)
 	if err != nil {
-		os.RemoveAll(tempDir)
+		_ = os.RemoveAll(tempDir)
 		return "", nil, fmt.Errorf("failed to clone repository: %w", err)
 	}
 
-	cleanup := func() error {
+	cleanup = func() error {
 		return os.RemoveAll(tempDir)
 	}
 

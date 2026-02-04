@@ -21,7 +21,7 @@ func (s *DispersionStrategy) Name() string {
 	return "file_dispersion_analysis"
 }
 
-func (s *DispersionStrategy) Detect(pair *git.CommitPair, repoStats *metrics.RepositoryStats) (bool, string) {
+func (s *DispersionStrategy) Detect(pair *git.CommitPair, repoStats *metrics.RepositoryStats) (isSuspicious bool, reason string) {
 	if s.maxFilesThreshold > 0 && pair.Stats.FilesChanged > s.maxFilesThreshold {
 		return true, fmt.Sprintf(
 			"Commit touches too many files: %d files (threshold: %d files) - possible batch automation",
@@ -49,7 +49,7 @@ func (s *RatioStrategy) Name() string {
 	return "ratio_analysis"
 }
 
-func (s *RatioStrategy) Detect(pair *git.CommitPair, repoStats *metrics.RepositoryStats) (bool, string) {
+func (s *RatioStrategy) Detect(pair *git.CommitPair, repoStats *metrics.RepositoryStats) (isSuspicious bool, reason string) {
 	total := pair.Stats.Additions + pair.Stats.Deletions
 	if total < s.minCommitSize {
 		return false, ""
@@ -93,7 +93,7 @@ func (s *PrecisionStrategy) Name() string {
 	return "precision_analysis"
 }
 
-func (s *PrecisionStrategy) Detect(pair *git.CommitPair, repoStats *metrics.RepositoryStats) (bool, string) {
+func (s *PrecisionStrategy) Detect(pair *git.CommitPair, repoStats *metrics.RepositoryStats) (isSuspicious bool, reason string) {
 	if pair.Stats.Additions > 50 && pair.Stats.Deletions > 50 {
 		diff := float64(pair.Stats.Additions - pair.Stats.Deletions)
 		total := float64(pair.Stats.Additions + pair.Stats.Deletions)
