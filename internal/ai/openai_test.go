@@ -60,8 +60,7 @@ func TestNewOpenAIAnalyzer(t *testing.T) {
 				}
 				if analyzer == nil {
 					t.Errorf("expected analyzer but got nil")
-				}
-				if analyzer.config.Model != tt.expectModel {
+				} else if analyzer.config.Model != tt.expectModel {
 					t.Errorf("expected model %q, got %q", tt.expectModel, analyzer.config.Model)
 				}
 			}

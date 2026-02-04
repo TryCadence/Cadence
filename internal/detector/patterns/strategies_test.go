@@ -174,7 +174,7 @@ func TestPatternDetectionConsistency(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			if len(tc.input) > 0 {
+			if tc.input != "" {
 				words := len(tc.input)
 				if words > 0 {
 					t.Logf("processed %d characters", words)

@@ -20,13 +20,13 @@ func TestWebhookFlagsStructure(t *testing.T) {
 		{
 			fieldName: "host",
 			check: func() bool {
-				return webhookFlags.host == "" || len(webhookFlags.host) > 0
+				return webhookFlags.host == "" || webhookFlags.host != ""
 			},
 		},
 		{
 			fieldName: "secret",
 			check: func() bool {
-				return webhookFlags.secret == "" || len(webhookFlags.secret) > 0
+				return webhookFlags.secret == "" || webhookFlags.secret != ""
 			},
 		},
 		{

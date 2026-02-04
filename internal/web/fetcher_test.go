@@ -37,6 +37,7 @@ func TestNewFetcher(t *testing.T) {
 
 			if fetcher == nil {
 				t.Error("expected fetcher but got nil")
+				return
 			}
 
 			if fetcher.client == nil {

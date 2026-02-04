@@ -76,7 +76,7 @@ func TestDetectFormatFromExtension(t *testing.T) {
 				// Additional check for error message if needed
 				if tt.errorContains != "" && err != nil {
 					errMsg := err.Error()
-					if len(errMsg) == 0 || len(tt.errorContains) > len(errMsg) {
+					if errMsg == "" || len(tt.errorContains) > len(errMsg) {
 						// Check if errorContains is in errMsg
 						found := false
 						for i := 0; i <= len(errMsg)-len(tt.errorContains); i++ {
@@ -165,42 +165,42 @@ func TestIsRemoteRepo(t *testing.T) {
 
 func TestParseGitHubURL(t *testing.T) {
 	tests := []struct {
-		url           string
+		url            string
 		expectedGitURL string
 		expectedBranch string
 	}{
 		{
-			url:           "https://github.com/owner/repo",
+			url:            "https://github.com/owner/repo",
 			expectedGitURL: "https://github.com/owner/repo.git",
 			expectedBranch: "",
 		},
 		{
-			url:           "https://github.com/owner/repo/blob/main/file.txt",
+			url:            "https://github.com/owner/repo/blob/main/file.txt",
 			expectedGitURL: "https://github.com/owner/repo.git",
 			expectedBranch: "main",
 		},
 		{
-			url:           "https://github.com/owner/repo/blob/develop/path/to/file.go",
+			url:            "https://github.com/owner/repo/blob/develop/path/to/file.go",
 			expectedGitURL: "https://github.com/owner/repo.git",
 			expectedBranch: "develop",
 		},
 		{
-			url:           "https://github.com/owner/repo/tree/feature/new-feature",
+			url:            "https://github.com/owner/repo/tree/feature/new-feature",
 			expectedGitURL: "https://github.com/owner/repo.git",
 			expectedBranch: "feature",
 		},
 		{
-			url:           "https://gitlab.com/owner/repo",
+			url:            "https://gitlab.com/owner/repo",
 			expectedGitURL: "https://gitlab.com/owner/repo",
 			expectedBranch: "",
 		},
 		{
-			url:           "http://example.com/repo",
+			url:            "http://example.com/repo",
 			expectedGitURL: "http://example.com/repo",
 			expectedBranch: "",
 		},
 		{
-			url:           "https://github.com/owner",
+			url:            "https://github.com/owner",
 			expectedGitURL: "https://github.com/owner",
 			expectedBranch: "",
 		},

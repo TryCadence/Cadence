@@ -73,9 +73,9 @@ func TestHeadingHierarchyStrategy(t *testing.T) {
 
 func TestMissingAltTextStrategy(t *testing.T) {
 	tests := []struct {
-		name           string
-		imageElements  []map[string]string
-		hasAltText     bool
+		name          string
+		imageElements []map[string]string
+		hasAltText    bool
 	}{
 		{
 			name: "image with alt text",
@@ -152,23 +152,23 @@ func TestFormIssuesStrategy(t *testing.T) {
 
 func TestSemanticHTMLStrategy(t *testing.T) {
 	tests := []struct {
-		name     string
-		html     string
+		name        string
+		html        string
 		hasSemantic bool
 	}{
 		{
-			name:     "uses semantic tags",
-			html:     "<header><nav></nav></header><main><article></article></main>",
+			name:        "uses semantic tags",
+			html:        "<header><nav></nav></header><main><article></article></main>",
 			hasSemantic: true,
 		},
 		{
-			name:     "uses only divs",
-			html:     "<div><div></div></div><div><div></div></div>",
+			name:        "uses only divs",
+			html:        "<div><div></div></div><div><div></div></div>",
 			hasSemantic: false,
 		},
 		{
-			name:     "mixed usage",
-			html:     "<header><div></div></header><main></main>",
+			name:        "mixed usage",
+			html:        "<header><div></div></header><main></main>",
 			hasSemantic: true,
 		},
 	}
@@ -308,23 +308,23 @@ func TestOverusedPhrasesStrategy(t *testing.T) {
 
 func TestPlaceholderStrategy(t *testing.T) {
 	tests := []struct {
-		content string
-		name    string
+		content        string
+		name           string
 		hasPlaceholder bool
 	}{
 		{
-			name:    "with Lorem Ipsum",
-			content: "Lorem ipsum dolor sit amet consectetur",
+			name:           "with Lorem Ipsum",
+			content:        "Lorem ipsum dolor sit amet consectetur",
 			hasPlaceholder: true,
 		},
 		{
-			name:    "with [Placeholder]",
-			content: "This section [Placeholder] will be filled in later",
+			name:           "with [Placeholder]",
+			content:        "This section [Placeholder] will be filled in later",
 			hasPlaceholder: true,
 		},
 		{
-			name:    "real content",
-			content: "This section contains actual product information",
+			name:           "real content",
+			content:        "This section contains actual product information",
 			hasPlaceholder: false,
 		},
 	}
