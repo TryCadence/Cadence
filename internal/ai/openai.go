@@ -81,7 +81,7 @@ func (a *OpenAIAnalyzer) AnalyzeWithSystemPrompt(ctx context.Context, systemProm
 	return resp.Choices[0].Message.Content, nil
 }
 
-func (a *OpenAIAnalyzer) AnalyzeSuspiciousCode(ctx context.Context, commitHash string, additions string) (string, error) {
+func (a *OpenAIAnalyzer) AnalyzeSuspiciousCode(ctx context.Context, commitHash, additions string) (string, error) {
 	result, err := a.analyzeWithReasoning(ctx, commitHash, additions)
 	if err != nil {
 		return "", err
@@ -94,7 +94,7 @@ func (a *OpenAIAnalyzer) AnalyzeSuspiciousCode(ctx context.Context, commitHash s
 	return output, nil
 }
 
-func (a *OpenAIAnalyzer) analyzeWithReasoning(ctx context.Context, commitHash string, additions string) (*AnalysisResult, error) {
+func (a *OpenAIAnalyzer) analyzeWithReasoning(ctx context.Context, commitHash, additions string) (*AnalysisResult, error) {
 	codeSnippet := additions
 	if len(codeSnippet) > 2000 {
 		codeSnippet = codeSnippet[:2000] + "...[truncated]"
@@ -197,7 +197,7 @@ func parseAnalysisResult(responseText string) (*AnalysisResult, error) {
 			result.Assessment = "unlikely AI-generated"
 			result.Confidence = 0.2
 		}
-		result.Reasoning = responseText[:min(len(responseText), 200)]
+		result.Reasoning = responseText[:intMin(len(responseText), 200)]
 		return result, nil
 	}
 
@@ -243,7 +243,7 @@ func parseAnalysisResult(responseText string) (*AnalysisResult, error) {
 	return result, nil
 }
 
-func min(a, b int) int {
+func intMin(a, b int) int {
 	if a < b {
 		return a
 	}

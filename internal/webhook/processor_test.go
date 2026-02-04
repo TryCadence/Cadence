@@ -25,8 +25,8 @@ func TestJobQueue_Enqueue(t *testing.T) {
 		if job.ID == "" {
 			t.Error("Job ID should be generated")
 		}
-		if job.Status != "pending" {
-			t.Errorf("Job status = %s, want pending", job.Status)
+		if job.Status != StatusPending {
+			t.Errorf("Job status = %s, want %s", job.Status, StatusPending)
 		}
 	})
 }
@@ -138,12 +138,7 @@ func TestJobQueue_StartStop(t *testing.T) {
 			RepoName:  "test-repo",
 		}
 
-		// Enqueuing after stop should fail (queue context cancelled)
-		err := queue2.Enqueue(job)
-		if err == nil {
-			// This might succeed if the job is queued before context is fully cancelled
-			// That's OK, the important thing is Start/Stop work
-		}
+		_ = queue2.Enqueue(job)
 	})
 }
 

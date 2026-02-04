@@ -2,6 +2,14 @@ package webhook
 
 import "time"
 
+const (
+	// Job status constants
+	StatusPending    = "pending"
+	StatusProcessing = "processing"
+	StatusCompleted  = "completed"
+	StatusFailed     = "failed"
+)
+
 // WebhookJob represents an analysis job triggered by a webhook event
 type WebhookJob struct {
 	ID        string
@@ -12,7 +20,7 @@ type WebhookJob struct {
 	Commits   []WebhookCommit
 	Author    string
 	Timestamp time.Time
-	Status    string // "pending", "processing", "completed", "failed"
+	Status    string // StatusPending, StatusProcessing, StatusCompleted, StatusFailed
 	Error     string
 	Result    *JobResult
 }

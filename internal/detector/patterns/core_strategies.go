@@ -23,7 +23,7 @@ func (s *VelocityStrategy) Name() string {
 	return "velocity_analysis"
 }
 
-func (s *VelocityStrategy) Detect(pair *git.CommitPair, repoStats *metrics.RepositoryStats) (bool, string) {
+func (s *VelocityStrategy) Detect(pair *git.CommitPair, repoStats *metrics.RepositoryStats) (isSuspicious bool, reason string) {
 	if pair.TimeDelta <= 0 {
 		return false, ""
 	}
@@ -67,7 +67,7 @@ func (s *SizeStrategy) Name() string {
 	return "size_analysis"
 }
 
-func (s *SizeStrategy) Detect(pair *git.CommitPair, repoStats *metrics.RepositoryStats) (bool, string) {
+func (s *SizeStrategy) Detect(pair *git.CommitPair, repoStats *metrics.RepositoryStats) (isSuspicious bool, reason string) {
 	if s.suspiciousAdditions > 0 && pair.Stats.Additions > s.suspiciousAdditions {
 		return true, fmt.Sprintf(
 			"Suspicious commit size: %d additions (threshold: %d lines)",
@@ -99,7 +99,7 @@ func (s *TimingStrategy) Name() string {
 	return "timing_analysis"
 }
 
-func (s *TimingStrategy) Detect(pair *git.CommitPair, repoStats *metrics.RepositoryStats) (bool, string) {
+func (s *TimingStrategy) Detect(pair *git.CommitPair, repoStats *metrics.RepositoryStats) (isSuspicious bool, reason string) {
 	if s.minTimeDeltaSeconds > 0 {
 		if pair.TimeDelta.Seconds() < float64(s.minTimeDeltaSeconds) {
 			return true, fmt.Sprintf(
@@ -126,7 +126,7 @@ func (s *MergeCommitStrategy) Name() string {
 	return "merge_commit_filter"
 }
 
-func (s *MergeCommitStrategy) Detect(pair *git.CommitPair, repoStats *metrics.RepositoryStats) (bool, string) {
+func (s *MergeCommitStrategy) Detect(pair *git.CommitPair, repoStats *metrics.RepositoryStats) (isSuspicious bool, reason string) {
 	if len(pair.Current.Parents) > 1 {
 		if s.flagAsSuspicious {
 			return true, fmt.Sprintf(

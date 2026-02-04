@@ -172,7 +172,7 @@ func (r *TextWebReporter) Generate(data *WebReportData) (string, error) {
 						sb.WriteString(fmt.Sprintf("   ... and %d more\n", len(pattern.Examples)-3))
 						break
 					}
-					sb.WriteString(fmt.Sprintf("   - \"%s\"\n", truncateExample(example, 80)))
+					sb.WriteString(fmt.Sprintf("   - %q\n", truncateExample(example, 80)))
 
 					if context := extractContext(mainContent, example, 150); context != "" {
 						sb.WriteString(fmt.Sprintf("     Context: ...%s...\n", context))

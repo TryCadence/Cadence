@@ -25,7 +25,7 @@ func (s *StatisticalAnomalyStrategy) Name() string {
 	return "StatisticalAnomaly"
 }
 
-func (s *StatisticalAnomalyStrategy) Detect(pair *git.CommitPair, repoStats *metrics.RepositoryStats) (bool, string) {
+func (s *StatisticalAnomalyStrategy) Detect(pair *git.CommitPair, repoStats *metrics.RepositoryStats) (isSuspicious bool, reason string) {
 	if !s.enabled || pair == nil || pair.Stats == nil {
 		return false, ""
 	}
@@ -88,7 +88,7 @@ func (s *TimingAnomalyStrategy) Name() string {
 	return "TimingAnomaly"
 }
 
-func (s *TimingAnomalyStrategy) Detect(pair *git.CommitPair, repoStats *metrics.RepositoryStats) (bool, string) {
+func (s *TimingAnomalyStrategy) Detect(pair *git.CommitPair, repoStats *metrics.RepositoryStats) (isSuspicious bool, reason string) {
 	if !s.enabled || pair == nil {
 		return false, ""
 	}

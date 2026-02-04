@@ -78,7 +78,7 @@ func countSpecialCharactersInLine(line string) map[rune]int {
 	return specialChars
 }
 
-func (s *SpecialCharacterPatternStrategy) Detect(pair *git.CommitPair, repoStats *metrics.RepositoryStats) (bool, string) {
+func (s *SpecialCharacterPatternStrategy) Detect(pair *git.CommitPair, repoStats *metrics.RepositoryStats) (isSuspicious bool, reason string) {
 	if !s.enabled || pair == nil || pair.Current == nil {
 		return false, ""
 	}
@@ -140,7 +140,7 @@ func (s *SpecialCharacterPatternStrategy) Detect(pair *git.CommitPair, repoStats
 	}
 
 	for lineIdx, line := range lines {
-		if len(line) == 0 {
+		if line == "" {
 			continue
 		}
 

@@ -89,7 +89,8 @@ func (wh *WebhookHandlers) HandleGithubWebhook(c *fiber.Ctx) error {
 		Commits:   make([]WebhookCommit, 0),
 	}
 
-	for _, commit := range payload.Commits {
+	for i := range payload.Commits {
+		commit := &payload.Commits[i]
 		timestamp, _ := time.Parse(time.RFC3339, commit.Timestamp)
 		job.Commits = append(job.Commits, WebhookCommit{
 			Hash:      commit.ID,
@@ -111,7 +112,7 @@ func (wh *WebhookHandlers) HandleGithubWebhook(c *fiber.Ctx) error {
 
 	return c.Status(http.StatusAccepted).JSON(fiber.Map{
 		"job_id": job.ID,
-		"status": "pending",
+		"status": StatusPending,
 	})
 }
 
@@ -131,7 +132,7 @@ func (wh *WebhookHandlers) HandleGitlabWebhook(c *fiber.Ctx) error {
 	}
 
 	return c.Status(http.StatusAccepted).JSON(fiber.Map{
-		"status": "pending",
+		"status": StatusPending,
 	})
 }
 

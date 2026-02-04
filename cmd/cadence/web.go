@@ -144,14 +144,14 @@ func runWebAnalyze(cmd *cobra.Command, args []string) error {
 	if outputFile != "" {
 		// Create reports directory if it doesn't exist
 		reportsDir := "reports"
-		if err := os.MkdirAll(reportsDir, 0755); err != nil {
+		if err := os.MkdirAll(reportsDir, 0o750); err != nil {
 			return fmt.Errorf("failed to create reports directory: %w", err)
 		}
 
 		// Construct full path
 		fullPath := fmt.Sprintf("%s/%s", reportsDir, outputFile)
 
-		if err := os.WriteFile(fullPath, []byte(output), 0644); err != nil {
+		if err := os.WriteFile(fullPath, []byte(output), 0o600); err != nil {
 			return fmt.Errorf("failed to write report to file: %w", err)
 		}
 		fmt.Fprintf(os.Stderr, "Report written to %s\n", fullPath)

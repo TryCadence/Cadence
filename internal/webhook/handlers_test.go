@@ -23,11 +23,14 @@ func TestWebhookHandlers_HealthCheck(t *testing.T) {
 	app := server.GetApp()
 
 	t.Run("health check", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/health", nil)
+		req, _ := http.NewRequest("GET", "/health", http.NoBody)
 		resp, err := app.Test(req)
 		if err != nil {
 			t.Fatalf("Test() unexpected error = %v", err)
 		}
+		defer func() {
+			_ = resp.Body.Close()
+		}()
 		if resp.StatusCode != http.StatusOK {
 			t.Errorf("Status = %d, want %d", resp.StatusCode, http.StatusOK)
 		}
@@ -49,11 +52,14 @@ func TestWebhookHandlers_Routes(t *testing.T) {
 	app := server.GetApp()
 
 	t.Run("github webhook endpoint exists", func(t *testing.T) {
-		req, _ := http.NewRequest("POST", "/webhooks/github", nil)
+		req, _ := http.NewRequest("POST", "/webhooks/github", http.NoBody)
 		resp, err := app.Test(req)
 		if err != nil {
 			t.Fatalf("Test() unexpected error = %v", err)
 		}
+		defer func() {
+			_ = resp.Body.Close()
+		}()
 		// Should return 401 because signature is missing
 		if resp.StatusCode != http.StatusUnauthorized {
 			t.Errorf("Status = %d, want %d", resp.StatusCode, http.StatusUnauthorized)
@@ -61,11 +67,14 @@ func TestWebhookHandlers_Routes(t *testing.T) {
 	})
 
 	t.Run("list jobs endpoint exists", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/jobs", nil)
+		req, _ := http.NewRequest("GET", "/jobs", http.NoBody)
 		resp, err := app.Test(req)
 		if err != nil {
 			t.Fatalf("Test() unexpected error = %v", err)
 		}
+		defer func() {
+			_ = resp.Body.Close()
+		}()
 		if resp.StatusCode != http.StatusOK {
 			t.Errorf("Status = %d, want %d", resp.StatusCode, http.StatusOK)
 		}

@@ -20,7 +20,7 @@ func (s *CommitMessageStrategy) Name() string {
 	return "commit_message_analysis"
 }
 
-func (s *CommitMessageStrategy) Detect(pair *git.CommitPair, repoStats *metrics.RepositoryStats) (bool, string) {
+func (s *CommitMessageStrategy) Detect(pair *git.CommitPair, repoStats *metrics.RepositoryStats) (isSuspicious bool, reason string) {
 	if !s.enabled {
 		return false, ""
 	}
@@ -97,7 +97,7 @@ func (s *NamingPatternStrategy) Name() string {
 	return "naming_pattern_analysis"
 }
 
-func (s *NamingPatternStrategy) Detect(pair *git.CommitPair, repoStats *metrics.RepositoryStats) (bool, string) {
+func (s *NamingPatternStrategy) Detect(pair *git.CommitPair, repoStats *metrics.RepositoryStats) (isSuspicious bool, reason string) {
 	if !s.enabled {
 		return false, ""
 	}
@@ -130,7 +130,7 @@ func (s *NamingPatternStrategy) Detect(pair *git.CommitPair, repoStats *metrics.
 	return false, ""
 }
 
-func (s *NamingPatternStrategy) analyzeCodeContent(diffContent string) (bool, string) {
+func (s *NamingPatternStrategy) analyzeCodeContent(diffContent string) (isSuspicious bool, reason string) {
 	lines := strings.Split(diffContent, "\n")
 	addedLines := make([]string, 0)
 
@@ -226,7 +226,7 @@ func (s *StructuralConsistencyStrategy) Name() string {
 	return "structural_consistency_analysis"
 }
 
-func (s *StructuralConsistencyStrategy) Detect(pair *git.CommitPair, repoStats *metrics.RepositoryStats) (bool, string) {
+func (s *StructuralConsistencyStrategy) Detect(pair *git.CommitPair, repoStats *metrics.RepositoryStats) (isSuspicious bool, reason string) {
 	if !s.enabled {
 		return false, ""
 	}
@@ -269,7 +269,7 @@ func (s *BurstPatternStrategy) Name() string {
 	return "burst_pattern_analysis"
 }
 
-func (s *BurstPatternStrategy) Detect(pair *git.CommitPair, repoStats *metrics.RepositoryStats) (bool, string) {
+func (s *BurstPatternStrategy) Detect(pair *git.CommitPair, repoStats *metrics.RepositoryStats) (isSuspicious bool, reason string) {
 	if !s.enabled || s.maxCommitsPerHour <= 0 {
 		return false, ""
 	}
@@ -296,7 +296,7 @@ func (s *ErrorHandlingPatternStrategy) Name() string {
 	return "error_handling_analysis"
 }
 
-func (s *ErrorHandlingPatternStrategy) Detect(pair *git.CommitPair, repoStats *metrics.RepositoryStats) (bool, string) {
+func (s *ErrorHandlingPatternStrategy) Detect(pair *git.CommitPair, repoStats *metrics.RepositoryStats) (isSuspicious bool, reason string) {
 	if !s.enabled {
 		return false, ""
 	}
@@ -325,7 +325,7 @@ func (s *ErrorHandlingPatternStrategy) Detect(pair *git.CommitPair, repoStats *m
 	return false, ""
 }
 
-func (s *ErrorHandlingPatternStrategy) analyzeErrorHandling(diffContent string, additions int64) (bool, string) {
+func (s *ErrorHandlingPatternStrategy) analyzeErrorHandling(diffContent string, additions int64) (isSuspicious bool, reason string) {
 	lines := strings.Split(diffContent, "\n")
 	addedLines := make([]string, 0)
 
@@ -390,7 +390,7 @@ func (s *TemplatePatternStrategy) Name() string {
 	return "template_pattern_analysis"
 }
 
-func (s *TemplatePatternStrategy) Detect(pair *git.CommitPair, repoStats *metrics.RepositoryStats) (bool, string) {
+func (s *TemplatePatternStrategy) Detect(pair *git.CommitPair, repoStats *metrics.RepositoryStats) (isSuspicious bool, reason string) {
 	if !s.enabled {
 		return false, ""
 	}
@@ -425,7 +425,7 @@ func (s *TemplatePatternStrategy) Detect(pair *git.CommitPair, repoStats *metric
 	return false, ""
 }
 
-func (s *TemplatePatternStrategy) analyzeTemplatePatterns(diffContent string) (bool, string) {
+func (s *TemplatePatternStrategy) analyzeTemplatePatterns(diffContent string) (isSuspicious bool, reason string) {
 	lines := strings.Split(diffContent, "\n")
 	addedLines := make([]string, 0)
 
@@ -552,7 +552,7 @@ func (s *FileExtensionPatternStrategy) Name() string {
 	return "file_extension_analysis"
 }
 
-func (s *FileExtensionPatternStrategy) Detect(pair *git.CommitPair, repoStats *metrics.RepositoryStats) (bool, string) {
+func (s *FileExtensionPatternStrategy) Detect(pair *git.CommitPair, repoStats *metrics.RepositoryStats) (isSuspicious bool, reason string) {
 	if !s.enabled {
 		return false, ""
 	}

@@ -60,7 +60,7 @@ func (q *JobQueue) Enqueue(job *WebhookJob) error {
 	if job.ID == "" {
 		job.ID = uuid.New().String()
 	}
-	job.Status = "pending"
+	job.Status = StatusPending
 	job.Timestamp = time.Now()
 
 	q.mu.Lock()
@@ -121,7 +121,7 @@ func (q *JobQueue) worker() {
 			}
 
 			q.mu.Lock()
-			job.Status = "processing"
+			job.Status = StatusProcessing
 			q.mu.Unlock()
 
 			ctx, cancel := context.WithTimeout(q.ctx, 5*time.Minute)
@@ -130,10 +130,10 @@ func (q *JobQueue) worker() {
 
 			q.mu.Lock()
 			if err != nil {
-				job.Status = "failed"
+				job.Status = StatusFailed
 				job.Error = err.Error()
 			} else {
-				job.Status = "completed"
+				job.Status = StatusCompleted
 			}
 			q.mu.Unlock()
 

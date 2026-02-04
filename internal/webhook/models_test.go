@@ -15,7 +15,7 @@ func TestWebhookJob(t *testing.T) {
 			Branch:    "main",
 			Author:    "John Doe",
 			Timestamp: time.Now(),
-			Status:    "pending",
+			Status:    StatusPending,
 		}
 
 		if job.ID != "test-123" {
@@ -24,8 +24,8 @@ func TestWebhookJob(t *testing.T) {
 		if job.EventType != "github_push" {
 			t.Errorf("EventType = %s, want github_push", job.EventType)
 		}
-		if job.Status != "pending" {
-			t.Errorf("Status = %s, want pending", job.Status)
+		if job.Status != StatusPending {
+			t.Errorf("Status = %s, want %s", job.Status, StatusPending)
 		}
 	})
 
