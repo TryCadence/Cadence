@@ -187,32 +187,14 @@ func parseAnalysisResult(responseText string) (*AnalysisResult, error) {
 	jsonEnd := strings.LastIndex(responseText, "}")
 
 	if jsonStart == -1 || jsonEnd == -1 {
-		if strings.Contains(responseText, "likely") {
-			result.Assessment = "likely AI-generated"
-			result.Confidence = 0.8
-		} else if strings.Contains(responseText, "possibly") {
-			result.Assessment = "possibly AI-generated"
-			result.Confidence = 0.5
-		} else {
-			result.Assessment = "unlikely AI-generated"
-			result.Confidence = 0.2
-		}
+		result.Assessment, result.Confidence = getAssessmentFromText(responseText)
 		result.Reasoning = responseText[:intMin(len(responseText), 200)]
 		return result, nil
 	}
 
 	jsonStr := responseText[jsonStart : jsonEnd+1]
 
-	if strings.Contains(jsonStr, "likely") {
-		result.Assessment = "likely AI-generated"
-		result.Confidence = 0.8
-	} else if strings.Contains(jsonStr, "possibly") {
-		result.Assessment = "possibly AI-generated"
-		result.Confidence = 0.5
-	} else {
-		result.Assessment = "unlikely AI-generated"
-		result.Confidence = 0.2
-	}
+	result.Assessment, result.Confidence = getAssessmentFromText(jsonStr)
 
 	confStart := strings.Index(jsonStr, `"confidence":`)
 	if confStart != -1 {
@@ -220,13 +202,7 @@ func parseAnalysisResult(responseText string) (*AnalysisResult, error) {
 		confEnd := strings.IndexAny(jsonStr[confStart:], ",}")
 		if confEnd != -1 {
 			confStr := strings.TrimSpace(jsonStr[confStart : confStart+confEnd])
-			if confStr == "1" || confStr == "1.0" {
-				result.Confidence = 1.0
-			} else if confStr == "0" || confStr == "0.0" {
-				result.Confidence = 0.0
-			} else if confStr[0:1] == "0" {
-				result.Confidence = 0.5
-			}
+			result.Confidence = parseConfidence(confStr)
 		}
 	}
 
@@ -241,6 +217,31 @@ func parseAnalysisResult(responseText string) (*AnalysisResult, error) {
 	}
 
 	return result, nil
+}
+
+func getAssessmentFromText(text string) (assessment string, confidence float64) {
+	switch {
+	case strings.Contains(text, "likely"):
+		return "likely AI-generated", 0.8
+	case strings.Contains(text, "possibly"):
+		return "possibly AI-generated", 0.5
+	default:
+		return "unlikely AI-generated", 0.2
+	}
+}
+
+func parseConfidence(confStr string) float64 {
+	switch confStr {
+	case "1", "1.0":
+		return 1.0
+	case "0", "0.0":
+		return 0.0
+	default:
+		if confStr != "" && confStr[0:1] == "0" {
+			return 0.5
+		}
+		return 0.5
+	}
 }
 
 func intMin(a, b int) int {

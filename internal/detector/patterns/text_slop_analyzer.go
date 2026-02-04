@@ -101,13 +101,14 @@ func (r *TextSlopResult) GetSummary() string {
 	score := r.GetConfidenceScore()
 	var summary string
 
-	if score >= 70 {
+	switch {
+	case score >= 70:
 		summary = "LIKELY AI-GENERATED: Strong indicators of AI-generated text"
-	} else if score >= 50 {
+	case score >= 50:
 		summary = "POSSIBLY AI-GENERATED: Multiple indicators suggest AI generation"
-	} else if score >= 30 {
+	case score >= 30:
 		summary = "SUSPICIOUS: Some AI-like patterns detected"
-	} else {
+	default:
 		summary = "LIKELY HUMAN-WRITTEN: Minimal AI indicators"
 	}
 

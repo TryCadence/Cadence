@@ -203,14 +203,16 @@ func (r *TextWebReporter) Generate(data *WebReportData) (string, error) {
 }
 
 func getAssessment(score int) string {
-	if score >= 70 {
+	switch {
+	case score >= 70:
 		return "LIKELY AI-GENERATED"
-	} else if score >= 50 {
+	case score >= 50:
 		return "POSSIBLY AI-GENERATED"
-	} else if score >= 30 {
+	case score >= 30:
 		return "SUSPICIOUS"
+	default:
+		return "LIKELY HUMAN-WRITTEN"
 	}
-	return "LIKELY HUMAN-WRITTEN"
 }
 
 func extractContext(content, example string, contextChars int) string {

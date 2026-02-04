@@ -24,7 +24,7 @@ endif
 
 # Unix/Linux/macOS build with version injection
 ifneq ($(OS_TYPE),windows)
-VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "0.1.0")
+VERSION := $(shell git describe --tags 2>/dev/null | sed 's/-[0-9]*-g[0-9a-f]*$$//' || echo "0.1.0")
 COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_TIME := $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
 LDFLAGS := -ldflags="-X github.com/trycadence/cadence/internal/version.Version=$(VERSION) -X github.com/trycadence/cadence/internal/version.GitCommit=$(COMMIT) -X github.com/trycadence/cadence/internal/version.BuildTime=$(BUILD_TIME)"

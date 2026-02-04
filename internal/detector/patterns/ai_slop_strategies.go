@@ -487,14 +487,16 @@ func (s *TemplatePatternStrategy) analyzeTemplatePatterns(diffContent string) (i
 		if strings.TrimSpace(line) != "" {
 			indent := 0
 			for _, r := range line {
-				if r == ' ' {
+				switch r {
+				case ' ':
 					indent++
-				} else if r == '\t' {
+				case '\t':
 					indent += 4
-				} else {
-					break
+				default:
+					goto countIndent
 				}
 			}
+		countIndent:
 			indentationLevels[indent]++
 		}
 	}
