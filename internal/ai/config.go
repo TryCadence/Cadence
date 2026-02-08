@@ -1,26 +1,25 @@
 package ai
 
 import (
-	"context"
 	"os"
-
-	"github.com/sashabaranov/go-openai"
 )
 
+// Config holds the configuration for AI-powered code analysis.
 type Config struct {
 	Enabled   bool
-	Provider  string // "openai" or empty to disable
+	Provider  string // "openai", "anthropic", or empty (defaults to "openai")
 	APIKey    string
-	Model     string
+	Model     string // Provider-specific model name; uses provider default if empty
 	MaxTokens int
 }
 
+// LoadConfig creates a Config from environment variables.
 func LoadConfig() *Config {
 	return &Config{
 		Enabled:   os.Getenv("CADENCE_AI_ENABLED") == "true",
 		Provider:  os.Getenv("CADENCE_AI_PROVIDER"),
 		APIKey:    os.Getenv("CADENCE_AI_KEY"),
-		Model:     getEnvOrDefault("CADENCE_AI_MODEL", "gpt-4o-mini"),
+		Model:     getEnvOrDefault("CADENCE_AI_MODEL", ""),
 		MaxTokens: 500,
 	}
 }
@@ -30,36 +29,4 @@ func getEnvOrDefault(key, defaultVal string) string {
 		return val
 	}
 	return defaultVal
-}
-
-type Analyzer interface {
-	AnalyzeSuspiciousCode(ctx context.Context, commitHash string, additions string) (string, error)
-	IsConfigured() bool
-}
-
-func NewAnalyzer(cfg *Config) (Analyzer, error) {
-	if !cfg.Enabled || cfg.APIKey == "" {
-		return &NoOpAnalyzer{}, nil
-	}
-
-	switch cfg.Provider {
-	case "openai":
-		client := &openai.Client{}
-		return &OpenAIAnalyzer{
-			client: client,
-			config: cfg,
-		}, nil
-	default:
-		return &NoOpAnalyzer{}, nil
-	}
-}
-
-type NoOpAnalyzer struct{}
-
-func (n *NoOpAnalyzer) AnalyzeSuspiciousCode(ctx context.Context, commitHash, additions string) (string, error) {
-	return "", nil
-}
-
-func (n *NoOpAnalyzer) IsConfigured() bool {
-	return false
 }

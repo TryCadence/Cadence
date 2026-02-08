@@ -1,7 +1,7 @@
 ## Makefile for Cadence (common developer tasks)
 ## Cross-platform build with automatic version injection from git tags
 
-.PHONY: all build install test fmt tidy lint vet run clean help
+.PHONY: all build install test fmt tidy lint vet run clean help webhook webhook-dev dev check build-all audit deps-update version
 
 BINARY := cadence
 OUT := bin/$(BINARY)
@@ -42,7 +42,7 @@ else
 	@echo "  Version: $(VERSION)"
 	@echo "  Commit:  $(COMMIT)"
 	@echo "  Time:    $(BUILD_TIME)"
-	@go build $(LDFLAGS) -o bin/$(BINARY) ./cmd/cadence
+	@go build $(LDFLAGS) -o bin/$(BINARY) ./cmd/cadence || (echo "Build failed!"; exit 1)
 	@echo "Build complete: bin/$(BINARY)"
 endif
 
@@ -91,21 +91,73 @@ vet:
 run:
 	go run ./cmd/cadence
 
+webhook:
+	go run ./cmd/cadence webhook --config .cadence.yaml --port 8000
+
+webhook-dev:
+	go run ./cmd/cadence webhook --config .cadence.yaml --port 8000
+
+dev: fmt vet test build
+	@echo "✓ Development build complete"
+
+check: fmt vet lint test
+	@echo "✓ All checks passed"
+
+build-all:
+ifeq ($(OS_TYPE),windows)
+	@powershell -ExecutionPolicy Bypass -File .\scripts\build-all.ps1
+else
+	GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o bin/cadence-linux-amd64 ./cmd/cadence
+	GOOS=darwin GOARCH=amd64 go build $(LDFLAGS) -o bin/cadence-darwin-amd64 ./cmd/cadence
+	GOOS=darwin GOARCH=arm64 go build $(LDFLAGS) -o bin/cadence-darwin-arm64 ./cmd/cadence
+	GOOS=windows GOARCH=amd64 go build $(LDFLAGS) -o bin/cadence-windows-amd64.exe ./cmd/cadence
+	@echo "✓ Built all platforms: bin/cadence-*"
+endif
+
+audit:
+	go list -json -m all | go run golang.org/x/vuln/cmd/govulncheck@latest
+
+deps-update:
+	go get -u ./...
+	go mod tidy
+	@echo "✓ Dependencies updated"
+
+version:
+	@echo "Cadence $(VERSION)"
+
 clean:
 	@rm -rf bin coverage.out coverage.html
 
 help:
 	@echo "Cadence Makefile targets:"
+	@echo ""
+	@echo "Build & Install:"
 	@echo "  make build           - Build binary with automatic version injection from git tags"
+	@echo "  make build-all       - Build for all platforms (Linux, macOS, Windows)"
 	@echo "  make install         - Install binary to \$$GOPATH/bin"
+	@echo ""
+	@echo "Development:"
+	@echo "  make run             - Run application (default CLI)"
+	@echo "  make webhook         - Run webhook server on port 8000"
+	@echo "  make webhook-dev     - Run webhook server with verbose output"
+	@echo "  make dev             - Run full dev cycle: fmt, vet, test, build"
+	@echo "  make check           - Run all checks: fmt, vet, lint, test"
+	@echo ""
+	@echo "Testing & Quality:"
 	@echo "  make test            - Run all tests"
 	@echo "  make coverage        - Run tests with coverage report (generates coverage.html)"
 	@echo "  make coverage-report - Run tests and display coverage summary"
 	@echo "  make coverage-strict - Run tests and enforce 85% coverage threshold"
-	@echo "  make fmt             - Format code"
-	@echo "  make tidy            - Tidy dependencies"
 	@echo "  make lint            - Run linter"
 	@echo "  make vet             - Run go vet"
-	@echo "  make run             - Run application"
+	@echo "  make fmt             - Format code"
+	@echo ""
+	@echo "Dependencies:"
+	@echo "  make tidy            - Tidy dependencies"
+	@echo "  make deps-update     - Update all dependencies"
+	@echo "  make audit           - Audit dependencies for vulnerabilities"
+	@echo ""
+	@echo "Utilities:"
+	@echo "  make version         - Display current version"
 	@echo "  make clean           - Clean build artifacts and coverage files"
 

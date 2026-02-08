@@ -6,17 +6,14 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	gogit "github.com/go-git/go-git/v5"
 	"github.com/spf13/cobra"
 
-	"github.com/TryCadence/Cadence/internal/ai"
-	"github.com/TryCadence/Cadence/internal/analyzer"
+	"github.com/TryCadence/Cadence/internal/analysis"
+	"github.com/TryCadence/Cadence/internal/analysis/detectors"
+	"github.com/TryCadence/Cadence/internal/analysis/sources"
 	"github.com/TryCadence/Cadence/internal/config"
-	"github.com/TryCadence/Cadence/internal/detector"
-	"github.com/TryCadence/Cadence/internal/git"
-	"github.com/TryCadence/Cadence/internal/metrics"
 	"github.com/TryCadence/Cadence/internal/reporter"
 )
 
@@ -64,17 +61,14 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Handle remote repositories (GitHub URLs)
 	if isRemoteRepo(repoPath) {
-		// Parse GitHub web URLs to git clone URLs
 		gitURL, extractedBranch := parseGitHubURL(repoPath)
 
-		// Use extracted branch if no branch flag was provided
 		if analyzeBranch == "" && extractedBranch != "" {
 			analyzeBranch = extractedBranch
 		}
 
-		fmt.Println("Cloning repository...")
+		fmt.Fprintln(os.Stderr, "Cloning repository...")
 		repoPath, cleanup, err = cloneRemoteRepo(gitURL)
 		if err != nil {
 			return fmt.Errorf("failed to clone repository: %w", err)
@@ -86,7 +80,6 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		}()
 	}
 
-	// Auto-detect cadence.yml in current directory if no config specified
 	cfgPath := configFile
 	if cfgPath == "" {
 		if _, err := os.Stat("cadence.yml"); err == nil {
@@ -122,69 +115,38 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("no thresholds configured - please set thresholds via config file or flags")
 	}
 
-	repoOpts := &git.RepositoryOptions{
-		ExcludeFiles: cfg.ExcludeFiles,
-	}
-
-	repo, err := git.OpenRepository(repoPath, repoOpts)
-	if err != nil {
-		return fmt.Errorf("failed to open repository: %w", err)
-	}
-	defer func() { _ = repo.Close() }()
-
-	a := analyzer.New(repo)
-	opts := &git.CommitOptions{
-		Branch: analyzeBranch,
-	}
+	source := sources.NewGitRepositorySource(repoPath, analyzeBranch)
+	gitDetector := detectors.NewGitDetectorWithConfig(&cfg.Thresholds, &cfg.Strategies)
+	runner := analysis.NewDefaultDetectionRunner()
 
 	fmt.Fprintln(os.Stderr, "Analyzing repository...")
-	result, err := a.AnalyzeRepository(opts)
+	report, err := runner.Run(context.Background(), source, gitDetector)
 	if err != nil {
 		return fmt.Errorf("analysis failed: %w", err)
 	}
 
-	fmt.Fprintln(os.Stderr, "Calculating statistics...")
-	stats := metrics.CalculateStats(result.Commits, result.CommitPairs)
-
-	fmt.Fprintln(os.Stderr, "Detecting suspicious commits...")
-	det, err := detector.New(&cfg.Thresholds)
-	if err != nil {
-		return fmt.Errorf("failed to create detector: %w", err)
-	}
-
-	suspicious := det.DetectSuspicious(result.CommitPairs, stats)
-
-	// Perform AI analysis on suspicious commits if enabled
-	if cfg.AI.Enabled && len(suspicious) > 0 {
-		fmt.Fprintf(os.Stderr, "Performing AI analysis on %d suspicious commits...\n", len(suspicious))
-		if err := performAIAnalysis(suspicious, &cfg.AI); err != nil {
+	if cfg.AI.Enabled && report.DetectionCount > 0 {
+		fmt.Fprintf(os.Stderr, "Performing AI analysis on %d suspicious commits...\n", report.DetectionCount)
+		if err := performAIAnalysisUnified(report, &cfg.AI); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: AI analysis failed: %v\n", err)
 		}
 	}
 
-	rep, err := reporter.NewReporter(outputFormat)
+	formatter, err := reporter.NewAnalysisFormatter(outputFormat)
 	if err != nil {
-		return fmt.Errorf("failed to create reporter: %w", err)
+		return fmt.Errorf("failed to create formatter: %w", err)
 	}
 
-	reportData := &reporter.ReportData{
-		Suspicious: suspicious,
-		Stats:      stats,
-		Thresholds: &cfg.Thresholds,
-	}
-
-	reportStr, err := rep.Generate(reportData)
+	reportStr, err := formatter.FormatAnalysis(report)
 	if err != nil {
-		return fmt.Errorf("failed to generate report: %w", err)
+		return fmt.Errorf("failed to format report: %w", err)
 	}
 
-	// Create reports directory if it doesn't exist
 	reportsDir := "reports"
 	if err := os.MkdirAll(reportsDir, 0o750); err != nil {
 		return fmt.Errorf("failed to create reports directory: %w", err)
 	}
 
-	// Join the output path with reports directory
 	outputPath := filepath.Join(reportsDir, analyzeOutput)
 	if err := os.WriteFile(outputPath, []byte(reportStr), 0o600); err != nil {
 		return fmt.Errorf("failed to write output file: %w", err)
@@ -199,10 +161,6 @@ func isRemoteRepo(path string) bool {
 }
 
 func parseGitHubURL(url string) (gitURL, branch string) {
-	// Handle GitHub web URLs like https://github.com/owner/repo/blob/branch/path
-	// Convert to git clone URL: https://github.com/owner/repo.git
-	// Also extract branch if present
-
 	if !strings.Contains(url, "github.com") {
 		return url, ""
 	}
@@ -212,19 +170,16 @@ func parseGitHubURL(url string) (gitURL, branch string) {
 		return url, ""
 	}
 
-	// Extract owner and repo
 	owner := parts[3]
 	repo := parts[4]
 	branch = ""
 
-	// If it's a blob/tree URL, extract the branch
 	if len(parts) > 5 && (parts[5] == "blob" || parts[5] == "tree") {
 		if len(parts) > 6 {
 			branch = parts[6]
 		}
 	}
 
-	// Construct git clone URL
 	gitURL = fmt.Sprintf("https://github.com/%s/%s.git", owner, repo)
 	return
 }
@@ -234,7 +189,6 @@ func cloneRemoteRepo(repoURL string) (tempDir string, cleanup func() error, err 
 		return "", nil, fmt.Errorf("failed to create temp directory: %w", err)
 	}
 
-	// Use go-git to clone the repository
 	cloneOpts := &gogit.CloneOptions{
 		URL: repoURL,
 	}
@@ -250,75 +204,4 @@ func cloneRemoteRepo(repoURL string) (tempDir string, cleanup func() error, err 
 	}
 
 	return tempDir, cleanup, nil
-}
-
-func performAIAnalysis(suspicious []*detector.SuspiciousCommit, aiConfig *config.AIConfig) error {
-	aiAnalyzer, err := ai.NewAnalyzer(&ai.Config{
-		Enabled:   aiConfig.Enabled,
-		Provider:  aiConfig.Provider,
-		APIKey:    aiConfig.APIKey,
-		Model:     aiConfig.Model,
-		MaxTokens: 500,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create AI analyzer: %w", err)
-	}
-
-	if !aiAnalyzer.IsConfigured() {
-		return fmt.Errorf("AI analyzer not properly configured")
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	defer cancel()
-
-	for i, commit := range suspicious {
-		additions := getCommitAdditions(commit.Pair)
-		if additions == "" {
-			continue
-		}
-
-		fmt.Fprintf(os.Stderr, "  Analyzing commit %d/%d: %s...\n", i+1, len(suspicious), commit.Pair.Current.Hash[:8])
-
-		analysis, err := aiAnalyzer.AnalyzeSuspiciousCode(ctx, commit.Pair.Current.Hash, additions)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "    Warning: AI analysis failed for %s: %v\n", commit.Pair.Current.Hash[:8], err)
-			continue
-		}
-
-		commit.AIAnalysis = analysis
-	}
-
-	return nil
-}
-
-func getCommitAdditions(pair *git.CommitPair) string {
-	if pair == nil || pair.Current == nil {
-		return ""
-	}
-
-	if pair.DiffContent != "" {
-		lines := strings.Split(pair.DiffContent, "\n")
-		addedLines := make([]string, 0)
-
-		for _, line := range lines {
-			if strings.HasPrefix(line, "+") && !strings.HasPrefix(line, "+++") {
-				addedLines = append(addedLines, strings.TrimPrefix(line, "+"))
-			}
-		}
-
-		if len(addedLines) > 0 {
-			return strings.Join(addedLines, "\n")
-		}
-	}
-
-	// Fallback to summary if no diff content available
-	if pair.Stats.Additions > 0 {
-		return fmt.Sprintf("// Commit %s added %d lines and deleted %d lines across %d files",
-			pair.Current.Hash[:8],
-			pair.Stats.Additions,
-			pair.Stats.Deletions,
-			pair.Stats.FilesChanged)
-	}
-
-	return ""
 }

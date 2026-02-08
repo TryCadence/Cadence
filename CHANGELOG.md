@@ -7,6 +7,222 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - UNRELEASED
+
+### Added
+
+#### Unified Analysis Framework (`internal/analysis/`)
+Complete rewrite of the analysis pipeline into a source-agnostic, extensible architecture:
+- **Core Interfaces**: `AnalysisSource`, `Detector`, `DetectionRunner` — decouple sources from detection logic
+- **`AnalysisReport`**: Structured report model with `Detection`, `TimingInfo`, `PhaseTiming`, and `SourceMetrics`
+- **`DefaultDetectionRunner`**: Synchronous pipeline — validate → fetch → detect → score → report
+- **`StreamingRunner`**: Async pipeline emitting `StreamEvent` over channels for real-time SSE streaming
+  - Event types: `EventDetection`, `EventProgress`, `EventComplete`, `EventError`
+  - Panic recovery in goroutine prevents server crashes from faulty detectors/sources
+  - `CollectStream()` helper for consuming events synchronously in tests
+- **`SourceData`**: Unified data envelope with ID, Type, RawContent, and Metadata
+- **Confidence-Weighted Scoring**: `calculateReportStats()` uses `Detection.Confidence` to weight severity contributions to `OverallScore`
+  - Higher-confidence strategies contribute more; default weight 0.5 for strategies without confidence
+  - Assessment thresholds: ≥70 = "Suspicious Activity Detected", ≥40 = "Moderate Suspicion"
+
+#### Strategy Registry & Categories
+- **`StrategyRegistry`**: Thread-safe registry for strategy metadata with query methods
+  - `ByCategory()`, `BySourceType()`, `AboveConfidence()` for filtering
+  - `DefaultGitRegistry()` (18 strategies), `DefaultWebRegistry()` (20 strategies), `DefaultRegistry()` (combined 38)
+- **7 Strategy Categories**: `velocity`, `structural`, `behavioral`, `statistical`, `pattern`, `linguistic`, `accessibility`
+- **`StrategyInfo`**: Serializable metadata struct with Name, Category, Confidence, Description, SourceTypes
+
+#### Plugin System
+- **`PluginManager`**: Register/unregister custom detection strategies at runtime
+  - `StrategyPlugin` interface: `Info()` + `Detect()`
+  - Enable/disable individual plugins via `SetEnabled()`
+  - `RunAll()` with panic recovery — single plugin failure doesn't abort others
+  - `Detector()` adapter wraps plugins as a standard `Detector` for the pipeline
+  - `MergeIntoRegistry()` copies plugin metadata into a `StrategyRegistry`
+
+#### Caching Layer
+- **`InMemoryCache`**: Thread-safe analysis report cache
+  - Configurable max size (default 256 entries) via `WithMaxSize()` option
+  - TTL-based expiration with automatic cleanup on access
+  - LRU-ish eviction when capacity exceeded
+  - `CacheStats` tracking: hits, misses, evictions, current size
+
+#### Metrics & Observability
+- **`InMemoryMetrics`**: Comprehensive metrics collection implementing `AnalysisMetrics` interface
+  - Per-source tracking: analyses, detections, flagged items, errors, cache hits/misses, avg duration
+  - Per-strategy tracking: executions, detections, total/avg duration
+  - Per-phase error breakdown
+  - `Snapshot()` returns point-in-time `MetricsSnapshot`
+  - `PrometheusFormat()` exports Prometheus-compatible text exposition
+  - `NullMetrics` no-op implementation for testing
+  - Thread-safe with `sync.RWMutex`
+
+#### Structured Logging (`internal/logging/`)
+- **`Logger`**: Wrapper around `slog` with domain-specific helpers
+  - `LogPhase()`, `LogPhaseError()` — job phase tracking with structured fields
+  - `LogDetection()` — strategy/severity/score logging
+  - `LogAnalysis()` — source type/ID with arbitrary key-value pairs
+  - `With()` for creating child loggers with additional context
+  - Configurable: JSON or text format, log level (debug/info/warn/error), custom output writer
+  - `Default()` factory for standard configuration
+
+#### Custom Error System (`internal/errors/`)
+- **`CadenceError`**: Typed error with `ErrorType`, message, optional details map, and wrapped error
+  - `errors.Is()` / `errors.As()` compatible via `Unwrap()`
+  - 5 error types: `ErrTypeGit`, `ErrTypeConfig`, `ErrTypeAnalysis`, `ErrTypeValidation`, `ErrTypeIO`
+  - Convenience constructors: `GitError()`, `ConfigError()`, `AnalysisError()`, `ValidationError()`, `IOError()`
+  - Adopted across `repository.go`, `fetcher.go`, `git.go` detector — replacing all `fmt.Errorf` calls
+
+#### Report Formats (`internal/reporter/formats/`)
+5 output formatters implementing `AnalysisFormatter` interface:
+- **JSON**: Pretty-printed with timing breakdown, source metrics, severity counts
+- **Text**: Terminal-friendly with box-drawing, phase breakdown, severity sections
+- **HTML**: Styled report with gradient header, stat cards, detection cards, phase table
+- **YAML**: Snake-case keys, full timing/metrics/detection structure
+- **BSON**: Binary encoding with base64 string output + `FormatAnalysisRaw()` for raw bytes
+- **`NewAnalysisFormatter(format)`**: Factory function supporting `text`, `json`, `html`, `yaml`/`yml`, `bson`
+
+#### SSE Streaming Endpoints (`internal/webhook/stream_handler.go`)
+- **`POST /api/stream/repository`**: Real-time streaming analysis of git repositories
+  - Clones repo, runs `StreamingRunner`, emits SSE events as detections fire
+  - Heartbeat keepalive every 10s during clone, 15s during analysis
+  - 5-minute context timeout per stream
+  - Panic recovery in `SetBodyStreamWriter` callback
+- **`POST /api/stream/website`**: Real-time streaming analysis of web content
+  - Same SSE event model as repository streaming
+- **SSE Event Types**: `progress`, `detection`, `result`, `error`
+- **`buildJobResult()`**: Converts `AnalysisReport` into `JobResultResponse` for the final SSE result event
+
+#### Analysis Sources (`internal/analysis/sources/`)
+- **`GitRepositorySource`**: Opens local repo, fetches commits/pairs, implements `AnalysisSource`
+- **`WebsiteSource`**: Fetches URL content via `web.Fetcher`, implements `AnalysisSource`
+
+#### Detectors (`internal/analysis/detectors/`)
+- **`GitDetector`**: Iterates commit pairs, runs all pattern strategies, produces per-commit `Detection` entries
+  - `NewGitDetectorWithConfig()` accepts `StrategyConfig` for enabling/disabling strategies
+  - Skips merge commits and zero-change commits
+- **`WebDetector`**: Runs `TextSlopAnalyzer` against fetched page content
+
+#### AI Provider System (`internal/ai/`)
+- **Pluggable Provider Interface**: `Provider` with `Complete()`, `IsAvailable()`, `DefaultModel()`
+  - Database/sql-style registration via `RegisterProvider()` / `init()`
+  - `NewProvider(name)` factory with automatic provider discovery
+- **OpenAI Provider**: Using `go-openai` SDK, default model `gpt-4o-mini`
+- **Anthropic Provider**: Plain HTTP client, default model `claude-sonnet-4-20250514`
+- **`SkillRunner`**: Executes AI skills against a provider, returns `SkillResult` with raw + parsed output
+- **4 Built-in Skills**:
+  - `code_analysis` — detect AI patterns in code snippets
+  - `commit_review` — holistic review of git commits
+  - `pattern_explain` — explain why a strategy flagged content
+  - `report_summary` — natural-language summary of analysis reports
+- **Prompt Management** (`internal/ai/prompts/`): System prompt, user prompt template, response parsing with JSON extraction and text-heuristic fallback
+
+#### Strategy Enable/Disable Configuration
+- **`StrategyConfig`**: New config section for enabling/disabling individual detection strategies
+  - `DisabledStrategies` map in config file under `strategies:` section
+  - `IsEnabled(name)` method for runtime checks
+  - Git detector filters strategies by config before execution
+
+#### Other Additions
+- **Analysis Playground** (https://github.com/TryCadence/Website): Interactive web UI for repository and website analysis
+  - Real-time analysis job submission with repository URL input
+  - Website content analysis interface with pattern detection display
+  - Beautiful report cards showing suspicion scores, metrics, and detected patterns
+  - Job metadata display with timing information
+- **Progress Tracking System**: Real-time visibility into analysis operations
+  - Progress states: `initializing` → `cloning` → `opening-repo` → `analyzing-commits` → `analyzing-patterns` → `detecting-suspicious` → `processing-results` → `calculating-metrics` → `finalizing` → `completed`
+  - Frontend displays current operation step during analysis
+- **Enhanced Configuration**: Extended `exclude_files` from 5 to 19+ patterns (minified assets, build outputs, vendor folders, media, fonts)
+- **Cross-Platform Build Script** (`scripts/build-all.ps1`): Builds for Linux x64, macOS x64/ARM64, Windows x64 with automatic version injection
+- **Comprehensive Test Suites**: Tests for streaming, plugins, registry, strategy metadata, observability, cache, logging, report formats (JSON/Text/YAML/BSON)
+
+### Changed
+- **Commit Message False Positive Reduction**: Significantly reduced false flags on legitimate human commits
+  - Removed "initial commit", "update readme", "update dependencies" from generic patterns (common human behavior)
+  - Raised generic pattern threshold from `genericScore >= 1` to `>= 3` (requires multiple signals)
+  - Added combined signal check: `aiScore >= 1 && genericScore >= 2`
+  - Raised verbose message word count threshold from 8 to 10
+  - Lowered `CommitMessageStrategy` base confidence from 0.8 to 0.6 (medium confidence)
+- **Velocity Edge Cases**: Added 30-second minimum time delta floor (`MinTimeDelta = 30 * time.Second`)
+  - Prevents extreme velocity inflation (e.g., 600 LOC/min from 1-second timestamp delta)
+  - Both `CalculateVelocity` and `CalculateVelocityPerMinute` clamp short deltas
+  - New `Clamped bool` field in `VelocityMetrics` for transparency
+- **Robust Baseline Statistics**: `CalculateBaseline` now uses `trimmedMeanStdDev` (10% trim fraction)
+  - Excludes top and bottom 10% of values before computing mean/stddev for z-scores
+  - Prevents extreme outliers from polluting the baseline and masking other anomalies
+- **Web Fetcher Resilience**: Added retry with exponential backoff
+  - 3 retries with delays: 500ms, 1s, 2s
+  - Non-retryable HTTP statuses (404, 403, 401, 405, 410, 451) fail immediately
+  - Retryable statuses (429, 500, 502, 503, 504) trigger retry logic
+  - Core fetch logic extracted into `doFetch()` method
+- **AI Code Truncation**: Replaced hard `[:2000]` slice with `truncateAtLineBoundary(codeSnippet, 2000)`
+  - Cuts at last complete line boundary to preserve readable code structure
+  - Includes context: `"...[truncated: showing X of Y lines]"`
+- **Silent Failure Logging**: `GetCommitPairs` now logs skip reasons with structured logging
+  - Logs merge commit skips, time delta skips, diff error skips with commit hashes
+  - Summary log emitted with skip counts when any commits are skipped
+  - Replaced `fmt.Fprintf(os.Stderr)` branch warning with structured `logger.Warn()`
+- **Build Error Handling**: Makefile and PowerShell scripts now properly fail on compilation errors
+- **Repository Opening**: Added proper error handling with progress state tracking
+- **Configuration Management**: Consolidated sample config template into single source of truth
+
+### Fixed
+- **Clone Repository Context**: Removed indefinite timeout; now uses 2-minute timeout with progress tracking
+- **Type Safety**: Fixed missing arguments in `git.OpenRepository()` call
+- **Error Propagation**: All error paths properly logged with structured error types
+- **Custom Errors Adoption**: Replaced all `fmt.Errorf` calls with typed `CadenceError` across 4 core packages
+  - `repository.go`: `GitError()` for clone/open/diff failures
+  - `fetcher.go`: `IOError()` for HTTP/fetch failures
+  - `git.go` detector: `ValidationError()`, `AnalysisError()` for pipeline failures
+  - Enables programmatic error handling via `errors.As(&cadenceErr)`
+
+### Technical Details
+- **Architecture**: Source-agnostic pipeline: `AnalysisSource` → `Detector` → `AnalysisReport`
+  - Sources: `GitRepositorySource`, `WebsiteSource` (extensible to npm, Docker, etc.)
+  - Detectors: `GitDetector`, `WebDetector`, `PluginDetector`
+  - Runners: `DefaultDetectionRunner` (sync), `StreamingRunner` (async SSE)
+- **Frontend Changes** (https://github.com/TryCadence/Website):
+  - `src/lib/cadenceApi.ts`: SSE event handling for streaming analysis
+  - `src/components/AnalysisPlayground.tsx`: Real-time progress and detection display
+- **AI System**: Provider registry pattern with OpenAI + Anthropic support, skill-based prompt management
+- **Dependencies Added**: `go.mongodb.org/mongo-driver/v2/bson`, `gopkg.in/yaml.v3`, `github.com/google/uuid`
+- **Worker Configuration**: Default 4 concurrent workers, configurable via `--workers` flag or `webhook.max_workers` in config
+
+### Performance Notes
+- Repository clone: ~70 seconds typical (network-dependent)
+- SSE streaming eliminates polling — clients receive detections as they fire
+- Cache prevents redundant analysis of recently-analyzed targets
+- Trimmed statistics add negligible overhead (~sort + slice) but significantly improve z-score accuracy
+- Retry backoff adds up to 3.5s worst case for transient HTTP failures
+
+### Usage Examples
+```bash
+# Stream repository analysis via SSE
+curl -N -X POST http://localhost:8000/api/stream/repository \
+  -H "Content-Type: application/json" \
+  -d '{"repository_url": "https://github.com/example/repo"}'
+
+# Stream website analysis via SSE
+curl -N -X POST http://localhost:8000/api/stream/website \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com"}'
+
+# Non-streaming analysis
+curl -X POST http://localhost:8000/api/analyze/repository \
+  -H "Content-Type: application/json" \
+  -d '{"repository_url": "https://github.com/example/repo"}'
+
+# Disable specific strategies in config
+# cadence.yaml
+strategies:
+  disabled:
+    - emoji_pattern_analysis
+    - special_character_pattern_analysis
+
+# Build for all platforms
+.\scripts\build-all.ps1
+```
+
 ## [0.2.3] - 2026-02-03
 
 ### Added

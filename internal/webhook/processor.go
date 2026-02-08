@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/TryCadence/Cadence/internal/logging"
 	"github.com/google/uuid"
 )
 
@@ -19,6 +20,7 @@ type JobQueue struct {
 	processor  JobProcessor
 	mu         sync.RWMutex
 	jobStore   map[string]*WebhookJob
+	logger     *logging.Logger
 }
 
 type JobProcessor interface {
@@ -35,6 +37,7 @@ func NewJobQueue(maxWorkers int, processor JobProcessor) *JobQueue {
 		cancel:     cancel,
 		processor:  processor,
 		jobStore:   make(map[string]*WebhookJob),
+		logger:     logging.Default().With("component", "job_queue"),
 	}
 }
 
@@ -47,7 +50,6 @@ func (q *JobQueue) Start() error {
 	return nil
 }
 
-// Stop gracefully shuts down the job queue
 func (q *JobQueue) Stop() error {
 	q.cancel()
 	close(q.jobs)
@@ -55,7 +57,6 @@ func (q *JobQueue) Stop() error {
 	return nil
 }
 
-// Enqueue adds a job to the processing queue
 func (q *JobQueue) Enqueue(job *WebhookJob) error {
 	if job.ID == "" {
 		job.ID = uuid.New().String()
@@ -124,15 +125,19 @@ func (q *JobQueue) worker() {
 			job.Status = StatusProcessing
 			q.mu.Unlock()
 
+			q.logger.Info("processing job", "job_id", job.ID, "event_type", job.EventType)
+
 			ctx, cancel := context.WithTimeout(q.ctx, 5*time.Minute)
 			err := q.processor.Process(ctx, job)
 			cancel()
 
 			q.mu.Lock()
 			if err != nil {
+				q.logger.Error("job failed", "job_id", job.ID, "error", err)
 				job.Status = StatusFailed
 				job.Error = err.Error()
 			} else {
+				q.logger.Info("job completed", "job_id", job.ID)
 				job.Status = StatusCompleted
 			}
 			q.mu.Unlock()

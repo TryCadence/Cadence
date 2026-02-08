@@ -6,63 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/TryCadence/Cadence/internal/web"
+	"github.com/TryCadence/Cadence/internal/analysis/adapters/web"
 )
-
-func TestTruncateText(t *testing.T) {
-	tests := []struct {
-		text     string
-		maxChars int
-		expected string
-		name     string
-	}{
-		{
-			name:     "text shorter than max",
-			text:     "hello",
-			maxChars: 10,
-			expected: "hello",
-		},
-		{
-			name:     "text equal to max",
-			text:     "hello",
-			maxChars: 5,
-			expected: "hello",
-		},
-		{
-			name:     "text longer than max",
-			text:     "hello world",
-			maxChars: 5,
-			expected: "hello...",
-		},
-		{
-			name:     "empty text",
-			text:     "",
-			maxChars: 10,
-			expected: "",
-		},
-		{
-			name:     "max chars zero",
-			text:     "hello",
-			maxChars: 0,
-			expected: "...",
-		},
-		{
-			name:     "large text",
-			text:     strings.Repeat("a", 2000),
-			maxChars: 1000,
-			expected: strings.Repeat("a", 1000) + "...",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := truncateText(tt.text, tt.maxChars)
-			if result != tt.expected {
-				t.Errorf("expected %q, got %q", tt.expected, result)
-			}
-		})
-	}
-}
 
 func TestWebCommandFlag(t *testing.T) {
 	// Test that web command has all required flags

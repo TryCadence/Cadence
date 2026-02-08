@@ -147,13 +147,14 @@ func TestJobQueue_StartStop(t *testing.T) {
 }
 
 func TestAnalysisProcessor_Process(t *testing.T) {
-	processor := &AnalysisProcessor{}
+	processor := NewDefaultProcessor()
 
-	t.Run("process job", func(t *testing.T) {
+	t.Run("process job initializes result", func(t *testing.T) {
 		job := &WebhookJob{
-			ID:       "job-123",
-			RepoName: "test-repo",
-			Commits:  make([]WebhookCommit, 0),
+			ID:        "job-123",
+			RepoName:  "test-repo",
+			EventType: "webhook_test", // Unknown event type, should still initialize result
+			Commits:   make([]WebhookCommit, 0),
 		}
 
 		job.Commits = append(job.Commits, WebhookCommit{
@@ -173,8 +174,9 @@ func TestAnalysisProcessor_Process(t *testing.T) {
 		if job.Result.JobID != "job-123" {
 			t.Errorf("Result.JobID = %s, want job-123", job.Result.JobID)
 		}
-		if job.Result.TotalCommits != 1 {
-			t.Errorf("Result.TotalCommits = %d, want 1", job.Result.TotalCommits)
+		// For unknown event types with no RepoURL, TotalCommits should be 0
+		if job.Result.TotalCommits != 0 {
+			t.Errorf("Result.TotalCommits = %d, want 0", job.Result.TotalCommits)
 		}
 	})
 }

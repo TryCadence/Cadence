@@ -28,60 +28,7 @@ func init() {
 }
 
 func runConfigDefault(cmd *cobra.Command, args []string) error {
-	sample := `# Cadence Configuration - AI-Generated Code Detection
-# Analyzes git repositories to detect potential AI-generated code patterns
-
-thresholds:
-  # SIZE-BASED DETECTION
-  suspicious_additions: 500
-  suspicious_deletions: 1000
-  
-  # VELOCITY-BASED DETECTION
-  max_additions_per_min: 100
-  max_deletions_per_min: 500
-  
-  # TIMING-BASED DETECTION
-  min_time_delta_seconds: 60
-  
-  # FILE DISPERSION DETECTION
-  max_files_per_commit: 50
-  
-  # RATIO-BASED DETECTION
-  max_addition_ratio: 0.95
-  min_deletion_ratio: 0.95
-  min_commit_size_ratio: 100
-  
-  # PRECISION ANALYSIS
-  enable_precision_analysis: true
-
-# File patterns to exclude from analysis
-exclude_files:
-  - package-lock.json
-  - yarn.lock
-  - "*.min.js"
-  - "*.min.css"
-  - "node_modules/**"
-
-# WEBHOOK SERVER CONFIGURATION
-webhook:
-  # Enable/disable webhook server
-  enabled: false
-  
-  # Server host and port
-  host: "0.0.0.0"
-  port: 3000
-  
-  # Webhook secret for signature verification (set this!)
-  secret: "your-webhook-secret-key-here"
-  
-  # Number of concurrent workers for processing webhook events
-  max_workers: 4
-  
-  # Request timeouts in seconds
-  read_timeout: 30
-  write_timeout: 30
-`
-	fmt.Print(sample)
+	fmt.Print(config.SampleConfigTemplate)
 	return nil
 }
 

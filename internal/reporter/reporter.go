@@ -3,26 +3,26 @@ package reporter
 import (
 	"fmt"
 
-	"github.com/TryCadence/Cadence/internal/detector"
-	"github.com/TryCadence/Cadence/internal/metrics"
+	"github.com/TryCadence/Cadence/internal/analysis"
+	"github.com/TryCadence/Cadence/internal/reporter/formats"
 )
 
-type ReportData struct {
-	Suspicious []*detector.SuspiciousCommit
-	Stats      *metrics.RepositoryStats
-	Thresholds *detector.Thresholds
+type AnalysisFormatter interface {
+	FormatAnalysis(report *analysis.AnalysisReport) (string, error)
 }
 
-type Reporter interface {
-	Generate(data *ReportData) (string, error)
-}
-
-func NewReporter(format string) (Reporter, error) {
+func NewAnalysisFormatter(format string) (AnalysisFormatter, error) {
 	switch format {
 	case "text":
-		return &TextReporter{}, nil
+		return &formats.TextReporter{}, nil
 	case "json":
-		return &JSONReporter{}, nil
+		return &formats.JSONReporter{}, nil
+	case "html":
+		return &formats.HTMLReporter{}, nil
+	case "yaml", "yml":
+		return &formats.YAMLReporter{}, nil
+	case "bson":
+		return &formats.BSONReporter{}, nil
 	default:
 		return nil, fmt.Errorf("unsupported report format: %s", format)
 	}

@@ -42,7 +42,15 @@ Write-Host ""
 if ($Install) {
     Write-Host "Installing..." -ForegroundColor Cyan
     Invoke-Expression "go install $LDFLAGS ./cmd/cadence"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Installation failed!" -ForegroundColor Red
+        exit 1
+    }
 } else {
     Invoke-Expression "go build $LDFLAGS -o $Output ./cmd/cadence"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Build failed!" -ForegroundColor Red
+        exit 1
+    }
     Write-Host "Build complete: $Output" -ForegroundColor Green
 }

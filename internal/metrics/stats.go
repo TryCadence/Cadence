@@ -5,7 +5,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/TryCadence/Cadence/internal/git"
+	"github.com/TryCadence/Cadence/internal/analysis/adapters/git"
 )
 
 type RepositoryStats struct {

@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"os"
 
+	// Register AI providers
+	_ "github.com/TryCadence/Cadence/internal/ai/providers/anthropic"
+	_ "github.com/TryCadence/Cadence/internal/ai/providers/openai"
+
 	"github.com/spf13/cobra"
 )
 

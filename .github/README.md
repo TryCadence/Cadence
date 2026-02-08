@@ -2,77 +2,59 @@
 
 Detects AI-generated content in **git repositories** and **websites**.
 
-Analyze suspicious commits via code patterns, velocity anomalies, and statistical markers. Scan websites for AI-generated text using pattern detection and optional OpenAI validation.
+Cadence analyzes suspicious commits via code patterns, velocity anomalies, and statistical markers. It can also scan websites for AI-generated text using 38 detection strategies across 7 categories, with optional AI validation via OpenAI or Anthropic.
 
-**Status**: Ready to use | **Tests**: 70+ passing | **Go**: 1.23.0  
-**📖 Full Documentation**: [noslop.tech](https://noslop.tech) | [Quick Start](https://noslop.tech/docs/quick-start) | [CLI Commands](https://noslop.tech/docs/cli-commands)
+**Status**: Ready to use | **Tests**: 17 packages passing | **Go**: 1.24  
+**Full Documentation**: [noslop.tech](https://noslop.tech) | [Quick Start](https://noslop.tech/docs/quick-start) | [CLI Commands](https://noslop.tech/docs/cli-commands)
+
+## Features
+
+- **38 Detection Strategies** across velocity, structural, behavioral, statistical, pattern, linguistic, and accessibility categories
+- **Git Repository Analysis** — commit velocity, size, timing, naming patterns, burst detection, error handling patterns, and more
+- **Website Content Analysis** — overused phrases, generic language, excessive structure, AI vocabulary, accessibility issues
+- **Real-Time Streaming** — SSE endpoints for live analysis progress and detection events
+- **Multi-Provider AI** — Optional GPT-4o Mini or Claude analysis of flagged items
+- **5 Report Formats** — JSON, Text, HTML, YAML, BSON
+- **Plugin System** — Register custom detection strategies at runtime
+- **Extensible Architecture** — Source-agnostic pipeline: `AnalysisSource` → `Detector` → `AnalysisReport`
 
 ## Quick Start
-
-For detailed setup instructions, see [Installation Guide](https://noslop.tech/docs/installation).
-
-### Install
-
-Version information (version, commit hash, build time) is automatically injected during build from git tags.
-
-**Quick Start (all platforms)**
 
 ```bash
 git clone https://github.com/TryCadence/Cadence.git
 cd Cadence
-
 make build
 ```
 
-The Makefile automatically detects your OS and uses the appropriate build method (PowerShell on Windows, shell on Unix/Linux/macOS).
-
-**Alternative Methods**
-
-```bash
-# Using scripts directly
-./scripts/build.sh        # Linux/macOS
-.\scripts\build.ps1       # Windows
-
-# Direct Go (no version injection)
-go build ./cmd/cadence
-```
-
-Version injection is automatic when using `make build` or the platform-specific scripts.
-
-
-
-
-
-### Analyze a Repository
+The Makefile auto-detects your OS (PowerShell on Windows, shell on Unix/Linux/macOS).
 
 ```bash
 # Generate default config
 ./cadence config > cadence.yaml
 
-# Scan a repo for AI-generated commits
-./cadence analyze /path/to/repo -o report.txt --config cadence.yaml
+# Analyze a git repository
+./cadence analyze /path/to/repo -o report.json
+
+# Analyze a website
+./cadence web https://example.com --json --output report.json
 ```
 
-Output shows commits with unusual patterns, confidence scores, and reasons why each was flagged.
+**Alternative build methods:**
+
+```bash
+./scripts/build.sh          # Linux/macOS
+.\scripts\build.ps1         # Windows
+.\scripts\build-all.ps1     # Cross-compile all platforms
+go build ./cmd/cadence       # Direct Go (no version injection)
+```
 
 ## Usage
-
-For in-depth guides and examples, see:
-- [Git Analysis Guide](https://noslop.tech/docs/git-analysis-guide)
-- [Web Analysis Guide](https://noslop.tech/docs/web-analysis-guide)
-- [CLI Commands Reference](https://noslop.tech/docs/cli-commands)
 
 ### Analyze a Repository
 
 ```bash
-# Generate default config
-./cadence config > cadence.yml
-
-# Scan a repo (auto-loads cadence.yml if in current directory)
+# Auto-loads cadence.yaml from current directory
 ./cadence analyze /path/to/repo -o report.txt
-
-# Or specify config explicitly
-./cadence analyze /path/to/repo -o report.txt --config cadence.yml
 
 # With custom thresholds (overrides config)
 ./cadence analyze /path/to/repo \
@@ -81,191 +63,190 @@ For in-depth guides and examples, see:
   --max-additions-pm 100
 
 # Analyze specific branch
-./cadence analyze /path/to/repo \
-  -o report.json \
-  --branch main
+./cadence analyze /path/to/repo -o report.json --branch main
 
-# Exclude certain files (node_modules, lock files, etc)
+# Exclude files
 ./cadence analyze /path/to/repo \
   -o report.json \
   --exclude-files "*.min.js,package-lock.json"
 ```
 
-### Analyze Website Content for AI-Generated Text
+### Analyze Website Content
 
 ```bash
-# Detect AI-generated content on a website
+# Detect AI-generated content
 ./cadence web https://example.com
 
-# Generate JSON report and save to file
+# JSON report to file
 ./cadence web https://example.com --json --output report.json
 
 # With AI expert analysis (requires CADENCE_AI_KEY)
-./cadence web https://example.com --config cadence.yml --verbose
+./cadence web https://example.com --config cadence.yaml --verbose
 ```
 
-The `cadence web` command analyzes website content for common AI patterns:
-- **Overused phrases**: "in today's world", "furthermore", "in conclusion"
-- **Generic language**: "provide value", "various", "stakeholder", "utilize"
-- **Excessive structure**: Too many bullet points, numbered lists, perfect formatting
-- **Perfect grammar**: No contractions, no colloquialisms, suspiciously polished
-- **Boilerplate text**: "our mission", "award-winning", "industry-leading"
-- **Repetitive patterns**: Sentences starting with same words
-- **Lack of nuance**: Few specific examples, no citations, vague references
-- **Over-explanation**: Excessive transition phrases, explains obvious concepts
+Web analysis detects:
+- **Overused phrases** — "in today's world", "furthermore", "in conclusion"
+- **Generic language** — "provide value", "stakeholder", "utilize"
+- **AI vocabulary** — characteristic word choices and phrasing
+- **Excessive structure** — too many bullet points, perfect formatting
+- **Repetitive patterns** — sentences starting with same words
+- **Accessibility issues** — missing alt text, improper heading hierarchy
 
-**Output Options**:
-- Text format (default) - Human-readable with detailed pattern breakdown
-- JSON format (`--json`) - Machine-readable with full metadata
-- File output (`--output <file>`) - Save report to file instead of stdout
+### Streaming API (SSE)
 
-**Report Features**:
-- Confidence score (0-100%) with assessment
-- Detailed pattern breakdown with severity ratings
-- Specific examples of flagged content (up to 5 per pattern)
-- Context showing where patterns appear in the content
-- Content quality metrics (word count, headings, quality score)
+Real-time analysis via Server-Sent Events:
 
+```bash
+# Stream repository analysis
+curl -N -X POST http://localhost:8000/api/stream/repository \
+  -H "Content-Type: application/json" \
+  -d '{"repository_url": "https://github.com/user/repo"}'
 
-
-**Note**: `cadence.yml` in the current directory is automatically loaded if no `--config` flag is specified.
-
-### Output Example (Text)
-
-```
-SUSPICIOUS COMMITS
-Found 1 suspicious commit(s):
-
-[1] Commit: a1b2c3d4
-    Author:     John Doe <john@example.com>
-    Date:       2024-01-27T10:30:00Z
-    Confidence: 66.7%
-    Additions:  1500 lines / 2000 total
-    Deletions:  1200 lines / 1500 total
-    Files:      45 files changed
-    Time Delta: 0.50 minutes
-    Velocity:   3000 additions/min | 2400 deletions/min
-    
-    Reasons:
-    - Large commit: 1500 additions (threshold: 500)
-    - Fast velocity: 3000 additions/min (threshold: 100)
+# Stream website analysis
+curl -N -X POST http://localhost:8000/api/stream/website \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com"}'
 ```
 
-### Output Example (JSON)
-
-```json
-{
-  "suspicious_commits": [
-    {
-      "hash": "a1b2c3d4...",
-      "author": "John Doe",
-      "timestamp": "2024-01-27T10:30:00Z",
-      "confidence_score": 0.667,
-      "additions_filtered": 1500,
-      "deletions_filtered": 1200,
-      "addition_velocity_per_min": 3000.0,
-      "reasons": [
-        "Large commit: 1500 additions (threshold: 500)",
-        "Fast velocity: 3000 additions/min (threshold: 100)"
-      ]
-    }
-  ]
-}
-```
+SSE events: `progress` (phase updates), `detection` (each finding), `result` (final report), `error`.
 
 ## Detection Strategies
 
-For detailed strategy explanations, see [Detection Strategies Guide](https://noslop.tech/docs/detection-strategies).
+Cadence uses 38 strategies organized into 7 categories:
 
-Cadence flags commits that are suspicious based on:
+### Git Strategies (18)
 
-| Strategy | What it looks for | Indicator |
-|----------|------------------|-----------|
-| **Velocity** | Abnormally fast coding | >100 additions/min |
-| **Size** | Huge commits | >500 additions |
-| **Timing** | Rapid-fire commits | <60 sec apart |
-| **Additions Only** | No deletions, all adds | >90% additions |
-| **Merge Pattern** | Unusual merge behavior | Context-dependent |
+| Strategy | Category | What It Detects |
+|----------|----------|-----------------|
+| Velocity Analysis | velocity | Code speed exceeding human norms (>100 additions/min) |
+| Size Analysis | structural | Unusually large commits (>500 additions) |
+| Timing Analysis | behavioral | Rapid-fire commits (<60 sec apart) |
+| Burst Pattern | behavioral | Rapid-fire commit clusters suggesting batch processing |
+| Ratio Analysis | statistical | Skewed addition/deletion ratios (>90% additions) |
+| Precision Analysis | statistical | Suspiciously balanced code changes |
+| Structural Consistency | statistical | Unnaturally consistent addition/deletion ratios |
+| File Dispersion | structural | Too many files changed in a single commit |
+| File Extension | structural | Suspicious bulk file creation patterns |
+| Merge Commit Filter | structural | Unusual merge behavior and history rewrites |
+| Commit Message | behavioral | AI-typical commit message patterns and phrasing |
+| Naming Pattern | pattern | Generic or AI-typical variable/function naming |
+| Error Handling | pattern | Missing or excessive error handling |
+| Template Pattern | pattern | Boilerplate/template code from AI generation |
+| Statistical Anomaly | statistical | Deviations from repository baseline (trimmed z-scores) |
+| Timing Anomaly | behavioral | Unusual timing patterns between commits |
+| Emoji Pattern | pattern | Excessive emoji usage in commit messages |
+| Special Character | pattern | Unusual special character patterns |
 
-**Confidence Score**: Increases with each triggered strategy. Multiple signals = higher confidence.
+### Web Strategies (20)
+
+| Strategy | Category | What It Detects |
+|----------|----------|-----------------|
+| Overused Phrases | linguistic | Common AI filler phrases |
+| Generic Language | linguistic | Excessive generic business language |
+| AI Vocabulary | linguistic | AI-characteristic word choices |
+| Perfect Grammar | linguistic | Suspiciously uniform sentence lengths |
+| Missing Nuance | linguistic | Excessive absolute terms |
+| Excessive Transitions | linguistic | Overuse of transition words |
+| Excessive Structure | structural | Over-structured content with excessive lists |
+| Heading Hierarchy | structural | Improper heading level order |
+| Boilerplate Text | pattern | Common filler and boilerplate phrases |
+| Repetitive Patterns | pattern | Repetitive sentence structures |
+| Hardcoded Values | pattern | Inline styles, hardcoded pixels/colors |
+| Generic Styling | pattern | Lack of CSS variables and theming |
+| Emoji Overuse | pattern | Excessive emoji in content |
+| Special Characters | pattern | Excessive special character patterns |
+| Uniform Sentence Length | statistical | Unnaturally consistent sentence lengths |
+| Missing Alt Text | accessibility | Images without alt text |
+| Semantic HTML | accessibility | Overuse of divs instead of semantic tags |
+| Accessibility Markers | accessibility | Missing ARIA labels and roles |
+| Form Issues | accessibility | Missing labels, types, or names |
+| Link Text Quality | accessibility | Generic or non-descriptive link text |
+
+**Confidence-Weighted Scoring**: Each strategy has a confidence weight (0.0–1.0). Higher-confidence strategies contribute more to the overall score. Multiple signals compound.
 
 ## AI-Powered Analysis (Optional)
 
-Cadence can leverage OpenAI's GPT models to analyze flagged commits for additional AI-generation indicators. This is **optional** and requires an OpenAI API key.
+Cadence supports multiple AI providers for a second-opinion analysis of flagged items.
 
-### Why Use AI Analysis?
+### Supported Providers
 
-- **Second opinion**: AI provides independent assessment of suspicious commits
-- **Token efficient**: Only analyzes already-flagged commits (not all commits)
-- **Lightweight**: Uses GPT-4 Mini for cost efficiency
-- **Complementary**: Works alongside statistical detection, not instead of it
+| Provider | Default Model | Setup |
+|----------|---------------|-------|
+| OpenAI | `gpt-4o-mini` | `CADENCE_AI_KEY=sk-...` |
+| Anthropic | `claude-sonnet-4-20250514` | `CADENCE_AI_KEY=sk-ant-...` |
 
-### Setup
+### Configuration
 
-1. Get an OpenAI API key from https://platform.openai.com/api-keys
-2. Enable in config or environment:
-
-```bash
-# Via config file (cadence.yaml)
+```yaml
+# cadence.yaml
 ai:
   enabled: true
-  provider: "openai"
-  api_key: "sk-..."  # or use env var below
-  model: "gpt-4-mini"
-
-# OR via environment variable
-export CADENCE_AI_KEY="sk-..."
+  provider: "openai"     # or "anthropic"
+  api_key: "sk-..."      # or use CADENCE_AI_KEY env var
+  model: "gpt-4o-mini"
 ```
 
-3. Run analysis as normal - AI kicks in automatically for suspicious commits
+### AI Skills
 
-### Output
+Cadence includes 4 built-in AI skills:
 
-AI analysis appears in both text and JSON reports:
+| Skill | Purpose |
+|-------|---------|
+| `code_analysis` | Detect AI patterns in code snippets |
+| `commit_review` | Holistic review of git commits |
+| `pattern_explain` | Explain why a strategy flagged content |
+| `report_summary` | Natural-language summary of analysis reports |
 
-**Text Report:**
-```
-    AI Analysis:     likely AI-generated
-```
+AI only analyzes already-flagged items — it never scans all commits.
 
-**JSON Report:**
-```json
-"ai_analysis": "likely AI-generated"
-```
+## Report Formats
 
-### Cost Estimation
+Cadence supports 5 output formats via the `AnalysisFormatter` interface:
 
-- Average suspicious commit: ~200 tokens
-- GPT-4 Mini: ~$0.00015 per 1K tokens  
-- Cost per analysis: ~$0.00003 (3 cents per 1000 commits)
+| Format | Flag | Description |
+|--------|------|-------------|
+| Text | `-o report.txt` | Terminal-friendly with severity sections |
+| JSON | `-o report.json` | Machine-readable with full metadata |
+| HTML | `-o report.html` | Styled report with stat cards and charts |
+| YAML | `-o report.yaml` | Config-friendly structured output |
+| BSON | programmatic | Binary encoding for MongoDB integration |
+
+All formats include: timing breakdown, source metrics, detection details, confidence scores, and assessment.
 
 ## Configuration
 
-For advanced configuration options, see [Configuration Guide](https://noslop.tech/docs/configuration).
-
-### Config File (YAML)
-
-Create a `cadence.yaml`:
+### Config File
 
 ```yaml
 thresholds:
-  # Commit size limits
-  suspicious_additions: 500      # additions per commit
-  suspicious_deletions: 1000     # deletions per commit
-  
-  # Velocity limits
-  max_additions_per_min: 100     # additions per minute
-  max_deletions_per_min: 500     # deletions per minute
-  
-  # Timing
-  min_time_delta_seconds: 60     # seconds between commits
+  suspicious_additions: 500
+  suspicious_deletions: 1000
+  max_additions_per_min: 100
+  max_deletions_per_min: 500
+  min_time_delta_seconds: 60
 
-# Files to ignore
 exclude_files:
   - "*.min.js"
   - "package-lock.json"
   - "yarn.lock"
+  - "dist/**"
+  - "build/**"
+  - "vendor/**"
+  - ".git/**"
+
+# Disable specific detection strategies
+strategies:
+  disabled:
+    - emoji_pattern_analysis
+    - special_character_pattern_analysis
+
+ai:
+  enabled: true
+  provider: "openai"
+  model: "gpt-4o-mini"
 ```
+
+`cadence.yaml` in the current directory is auto-loaded if no `--config` flag is specified.
 
 ### Command Line Flags
 
@@ -273,237 +254,201 @@ exclude_files:
 ./cadence analyze <repo> [flags]
 
 Flags:
-  -o, --output string              Output file (required) - .txt or .json
+  -o, --output string              Output file (required)
   --suspicious-additions int       Flag commits >N additions (default: 500)
   --suspicious-deletions int       Flag commits >N deletions (default: 1000)
   --max-additions-pm float         Max additions per minute (default: 100)
   --max-deletions-pm float         Max deletions per minute (default: 500)
-  --min-time-delta int            Min seconds between commits (default: 60)
-  --branch string                 Branch to analyze (default: all)
-  --exclude-files strings         File patterns to exclude
-  --config string                 Config file path
+  --min-time-delta int             Min seconds between commits (default: 60)
+  --branch string                  Branch to analyze (default: all)
+  --exclude-files strings          File patterns to exclude
+  --config string                  Config file path
 ```
 
 ### Environment Variables
 
 ```bash
-# Set webhook server config
-export CADENCE_WEBHOOK_PORT=3000
-export CADENCE_WEBHOOK_SECRET="your-secret-key"
-export CADENCE_WEBHOOK_MAX_WORKERS=4
+export CADENCE_AI_KEY="sk-..."              # AI provider API key
+export CADENCE_WEBHOOK_PORT=3000            # Webhook server port
+export CADENCE_WEBHOOK_SECRET="your-secret" # Webhook HMAC secret
+export CADENCE_WEBHOOK_MAX_WORKERS=4        # Concurrent analysis workers
 ```
 
-## Webhook Server
-
-For webhook setup and integration details, see [API Webhooks Guide](https://noslop.tech/docs/api-webhooks).
+## Webhook Server & API
 
 ### Start the Server
 
 ```bash
-./cadence webhook --port 3000 --secret "webhook-secret-key"
+./cadence webhook --port 8000 --secret "webhook-secret-key"
 ```
 
-### Configure GitHub Webhook
+### Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/webhooks/github` | Receive GitHub push events |
+| `POST` | `/webhooks/gitlab` | Receive GitLab push events |
+| `POST` | `/api/stream/repository` | SSE streaming repository analysis |
+| `POST` | `/api/stream/website` | SSE streaming website analysis |
+| `GET` | `/jobs/:id` | Check job status |
+| `GET` | `/jobs?limit=50` | List recent jobs |
+| `GET` | `/health` | Health check |
+
+### GitHub Webhook Setup
 
 1. Repository Settings → Webhooks → Add webhook
-2. Payload URL: `https://your-server:3000/webhooks/github`
+2. Payload URL: `https://your-server:8000/webhooks/github`
 3. Content type: `application/json`
-4. Secret: Use same value as `--secret` flag
+4. Secret: same value as `--secret` flag
 5. Events: Select "Push events"
 
-### API Endpoints
+## Architecture
 
-#### Receive webhook push event
 ```
-POST /webhooks/github
-POST /webhooks/gitlab
-```
-
-Returns:
-```json
-{
-  "job_id": "uuid",
-  "status": "processing"
-}
-```
-
-#### Check job status
-```
-GET /jobs/:id
-```
-
-Returns:
-```json
-{
-  "id": "job-uuid",
-  "status": "completed|processing|pending|failed",
-  "repo": "repo-name",
-  "branch": "main",
-  "timestamp": "2024-01-27T10:30:00Z",
-  "result": {
-    "suspicious_commits": [...]
-  }
-}
-```
-
-#### List recent jobs
-```
-GET /jobs?limit=50
-```
-
-#### Health check
-```
-GET /health
-```
-
-### How It Works
-
-1. GitHub sends push webhook → HTTP POST to `/webhooks/github`
-2. Cadence returns immediately with a job ID
-3. Analysis happens in background (non-blocking)
-4. Poll `/jobs/:id` to check progress
-5. Results available when `status` is `completed`
-
-## Common Questions
-
-**Q: Can I use this in CI/CD?**  
-A: Yes. Run `cadence analyze` in your pipeline, parse the JSON output, and fail the build if suspicious commits found.
-
-**Q: How accurate is it?**  
-A: Depends on your thresholds. Aggressive settings catch more but have more false positives. Start with defaults and tune.
-
-**Q: What about non-AI code that looks suspicious?**  
-A: The confidence score helps - legitimate fast commits might trigger one strategy but not multiple. Check the reasons.
-
-**Q: Does it work with GitHub/GitLab Enterprise?**  
-A: Webhooks work with any Git host. Self-hosted instances need network access to your Cadence server.
-
-**Q: Can I extend it?**  
-A: Yes. Detection strategies are pluggable interfaces in `internal/detector/`. Add custom logic easily.
-
-## Development
-
-For development setup and contribution guidelines, see [Build & Development Guide](https://noslop.tech/docs/build-development).
-
-### Build
-
-```bash
-# Using Makefile (Linux/macOS)
-make build
-
-# Or direct Go (all platforms)
-go build ./cmd/cadence
-
-# Version info is automatically injected from git tags via go:generate
-```
-
-### Available Make Targets
-
-```bash
-make build    # Build binary with version injection
-make install  # Install to $GOPATH/bin
-make test     # Run all tests
-make cover    # Run tests with coverage
-make fmt      # Format code
-make tidy     # Tidy dependencies  
-make lint     # Run linter
-make vet      # Run go vet
-make run      # Run application
-make clean    # Clean build artifacts
-make help     # Show all targets
-```
-
-### Run Tests
-
-```bash
-go test ./...
-go test -cover ./...  # With coverage
+AnalysisSource → Detector → AnalysisReport → Formatter
+     │               │              │
+     ├─ Git           ├─ Git (18)    ├─ JSON
+     ├─ Web           ├─ Web (20)    ├─ Text
+     └─ (extensible)  ├─ Plugin      ├─ HTML
+                      └─ (custom)    ├─ YAML
+                                     └─ BSON
 ```
 
 ### Project Structure
 
 ```
-cmd/cadence/          - CLI commands (analyze, webhook, config)
+cmd/cadence/                   CLI commands (analyze, web, webhook, config, version)
 internal/
-  analyzer/           - Repository analyzer orchestrator
-  detector/           - Detection strategies
-  git/                - Git operations
-  metrics/            - Statistics and velocity calculations
-  reporter/           - Output formatting (text, JSON)
-  config/             - Configuration loading
-  webhook/            - Webhook server (GitHub, GitLab)
-  web/                - Website content fetching and analysis
-    patterns/         - Web pattern detection strategies
-  errors/             - Error types
-test/                 - Integration tests
+  analysis/                    Core analysis framework
+    adapters/git/              Git repository adapter & pattern strategies
+    adapters/web/              Web content adapter & pattern strategies
+    detectors/                 GitDetector, WebDetector
+    sources/                   GitRepositorySource, WebsiteSource
+    cache.go                   In-memory analysis cache with TTL
+    observability.go           Metrics collection & Prometheus export
+    plugin.go                  Plugin system for custom strategies
+    registry.go                Strategy registry (38 strategies)
+    runner.go                  Synchronous detection runner
+    stream.go                  Streaming runner (SSE support)
+    report.go                  Report model & scoring
+    strategy.go                Strategy categories & metadata
+    source.go                  Core interfaces (AnalysisSource, Detector)
+  ai/                          AI provider system
+    providers/openai/          OpenAI provider
+    providers/anthropic/       Anthropic provider
+    skills/                    Built-in AI skills (4)
+    prompts/                   Prompt templates & response parsing
+  config/                      Configuration loading & validation
+  errors/                      Typed error system (CadenceError)
+  logging/                     Structured logging (slog wrapper)
+  metrics/                     Statistics & velocity calculations
+  reporter/                    Report formatter factory
+    formats/                   JSON, Text, HTML, YAML, BSON formatters
+  version/                     Build version info
+  webhook/                     Webhook server, handlers, SSE streaming
 ```
 
-### Adding Custom Detection Strategies
+## Extending Cadence
 
-**For Git Commit Analysis:**
+### Plugin System
 
-Create a new strategy in `internal/detector/`:
+Register custom detection strategies at runtime:
 
 ```go
-type CustomStrategy struct{}
+import "github.com/TryCadence/Cadence/internal/analysis"
 
-func (s *CustomStrategy) Name() string {
-    return "custom_detection"
-}
+type MyPlugin struct{}
 
-func (s *CustomStrategy) Detect(pair *git.CommitPair, stats *metrics.RepositoryStats) (bool, string) {
-    if isCustomSuspicious(pair) {
-        return true, "Your reason here"
+func (p *MyPlugin) Info() analysis.StrategyInfo {
+    return analysis.StrategyInfo{
+        Name:        "my_custom_check",
+        Category:    analysis.CategoryPattern,
+        Confidence:  0.7,
+        Description: "Detects my custom pattern",
+        SourceTypes: []string{"git"},
     }
-    return false, ""
 }
+
+func (p *MyPlugin) Detect(ctx context.Context, data *analysis.SourceData) ([]analysis.Detection, error) {
+    // Your detection logic
+    return detections, nil
+}
+
+// Register with the plugin manager
+pm := analysis.NewPluginManager()
+pm.Register(&MyPlugin{})
+
+// Use as a detector in the pipeline
+runner := analysis.NewStreamingRunner()
+events := runner.RunStream(ctx, source, pm.Detector())
 ```
 
-Register it in `internal/detector/detector.go` and it will automatically be used.
+### Custom Analysis Sources
 
-**For Web Content Analysis:**
-
-Create a custom pattern strategy:
+Implement `AnalysisSource` to add new data sources:
 
 ```go
-import "github.com/TryCadence/Cadence/internal/web/patterns"
-
-// Create custom strategy
-customStrategy := patterns.NewCustomPatternStrategy(
-    "marketing_speak",
-    []string{"synergy", "innovative", "disruptive"},
-    2, // threshold
-)
-
-// Register with analyzer
-analyzer := patterns.NewTextSlopAnalyzer()
-analyzer.RegisterStrategy(customStrategy)
-```
-
-Or implement the `WebPatternStrategy` interface for more complex logic:
-
-```go
-type MyCustomStrategy struct{}
-
-func (s *MyCustomStrategy) Name() string {
-    return "my_custom_pattern"
+type NPMPackageSource struct {
+    PackageName string
 }
 
-func (s *MyCustomStrategy) Detect(content string, wordCount int) *patterns.DetectionResult {
-    // Your detection logic here
-    if detected {
-        return &patterns.DetectionResult{
-            Detected:    true,
-            Type:        s.Name(),
-            Severity:    0.8,
-            Description: "Custom pattern detected",
-            Examples:    []string{"example1", "example2"},
-        }
-    }
-    return nil
-}
-<<<<<<< HEAD:.github/README.md
+func (s *NPMPackageSource) Type() string { return "npm" }
+func (s *NPMPackageSource) Validate(ctx context.Context) error { ... }
+func (s *NPMPackageSource) Fetch(ctx context.Context) (*analysis.SourceData, error) { ... }
 ```
+
+### Strategy Configuration
+
+Disable strategies per-project via config:
+
+```yaml
+strategies:
+  disabled:
+    - emoji_pattern_analysis
+    - special_character_pattern_analysis
+    - missing_alt_text
+```
+
+## Development
+
+```bash
+make build     # Build with version injection
+make test      # Run all tests
+make cover     # Tests with coverage
+make fmt       # Format code
+make lint      # Run linter
+make vet       # Run go vet
+make clean     # Clean build artifacts
+make help      # Show all targets
+```
+
+```bash
+# Run tests
+go test ./...
+
+# Run with coverage
+go test -cover ./...
+
+# Build for all platforms
+.\scripts\build-all.ps1
+```
+
+## FAQ
+
+**Can I use this in CI/CD?**  
+Yes. Run `cadence analyze` in your pipeline, parse the JSON output, and fail the build if suspicious commits are found.
+
+**How accurate is it?**  
+Start with defaults and tune. Confidence-weighted scoring means multiple signals compound — a single low-confidence trigger rarely produces a false positive.
+
+**What about legitimate fast commits?**  
+The 30-second velocity floor prevents timestamp artifacts from inflating scores. Trimmed statistics (excluding top/bottom 10%) keep baselines robust.
+
+**Does it work with GitHub/GitLab Enterprise?**  
+Yes. Webhooks work with any Git host. Self-hosted instances need network access to your Cadence server.
+
+**Which AI provider should I use?**  
+Both work. OpenAI (`gpt-4o-mini`) is cheapest. Anthropic (`claude-sonnet-4-20250514`) may produce more nuanced analysis. The provider is selected in your config.
 
 ## Resources
 
@@ -515,7 +460,4 @@ func (s *MyCustomStrategy) Detect(content string, wordCount int) *patterns.Detec
 
 ---
 
-*Made with ❤️ by [CodeMeAPixel](https://codemeapixel.dev) | Contact: hey@noslop.tech*
-=======
-```
->>>>>>> 75338e21a94c9ada5059002edd144ad1c8c75c7a:README.md
+**Made with ❤️ by [CodeMeAPixel](https://codemeapixel.dev)**

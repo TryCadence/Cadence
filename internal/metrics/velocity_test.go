@@ -36,10 +36,10 @@ func TestCalculateVelocity(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name:        "one second time delta",
+			name:        "one second time delta (clamped to 30s floor)",
 			loc:         10,
 			timeDelta:   1 * time.Second,
-			want:        600.0,
+			want:        20.0, // 10 LOC / 0.5 min (30s floor)
 			expectError: false,
 		},
 		{

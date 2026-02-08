@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TryCadence/Cadence/internal/git"
+	"github.com/TryCadence/Cadence/internal/analysis/adapters/git"
 )
 
 func TestCalculateStats(t *testing.T) {

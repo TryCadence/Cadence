@@ -4,23 +4,40 @@ import (
 	"testing"
 )
 
-func TestNewReporter(t *testing.T) {
+func TestNewAnalysisFormatter(t *testing.T) {
 	tests := []struct {
 		name        string
 		format      string
-		wantType    string
 		expectError bool
 	}{
 		{
-			name:        "text reporter",
+			name:        "creates text formatter",
 			format:      "text",
-			wantType:    "*reporter.TextReporter",
 			expectError: false,
 		},
 		{
-			name:        "json reporter",
+			name:        "creates json formatter",
 			format:      "json",
-			wantType:    "*reporter.JSONReporter",
+			expectError: false,
+		},
+		{
+			name:        "creates html formatter",
+			format:      "html",
+			expectError: false,
+		},
+		{
+			name:        "creates yaml formatter",
+			format:      "yaml",
+			expectError: false,
+		},
+		{
+			name:        "creates yml formatter",
+			format:      "yml",
+			expectError: false,
+		},
+		{
+			name:        "creates bson formatter",
+			format:      "bson",
 			expectError: false,
 		},
 		{
@@ -37,23 +54,22 @@ func TestNewReporter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewReporter(tt.format)
+			got, err := NewAnalysisFormatter(tt.format)
 			if tt.expectError {
 				if err == nil {
-					t.Errorf("NewReporter() expected error but got none")
+					t.Errorf("NewAnalysisFormatter() expected error but got none")
 				}
 				if got != nil {
-					t.Errorf("NewReporter() expected nil on error, got %v", got)
+					t.Errorf("NewAnalysisFormatter() expected nil on error, got %v", got)
 				}
 				return
 			}
 
 			if err != nil {
-				t.Errorf("NewReporter() unexpected error = %v", err)
-				return
+				t.Errorf("NewAnalysisFormatter() unexpected error = %v", err)
 			}
 			if got == nil {
-				t.Error("NewReporter() returned nil")
+				t.Error("NewAnalysisFormatter() returned nil")
 			}
 		})
 	}

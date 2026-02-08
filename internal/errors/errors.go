@@ -56,3 +56,25 @@ func (e *CadenceError) Is(target error) bool {
 func (e *CadenceError) Unwrap() error {
 	return e.Wrapped
 }
+
+// Convenience constructors for common error types.
+
+func GitError(message string) *CadenceError {
+	return NewError(ErrTypeGit, message)
+}
+
+func ConfigError(message string) *CadenceError {
+	return NewError(ErrTypeConfig, message)
+}
+
+func AnalysisError(message string) *CadenceError {
+	return NewError(ErrTypeAnalysis, message)
+}
+
+func ValidationError(message string) *CadenceError {
+	return NewError(ErrTypeValidation, message)
+}
+
+func IOError(message string) *CadenceError {
+	return NewError(ErrTypeIO, message)
+}

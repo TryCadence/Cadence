@@ -2,8 +2,9 @@ package analysis
 
 import (
 	"math"
+	"sort"
 
-	"github.com/TryCadence/Cadence/internal/git"
+	"github.com/TryCadence/Cadence/internal/analysis/adapters/git"
 )
 
 type AnomalyType string
@@ -56,7 +57,10 @@ func CalculateBaseline(pairs []*git.CommitPair) *RepositoryBaseline {
 
 	baseline := &RepositoryBaseline{}
 
-	var sumAdditions, sumDeletions, sumFiles float64
+	// Collect raw values for trimmed statistics
+	additions := make([]float64, 0, len(pairs))
+	deletions := make([]float64, 0, len(pairs))
+	var sumFiles float64
 	var additionRatios []float64
 	commitSizes := make([]int64, 0, len(pairs))
 
@@ -66,8 +70,8 @@ func CalculateBaseline(pairs []*git.CommitPair) *RepositoryBaseline {
 			continue
 		}
 
-		sumAdditions += float64(stats.Additions)
-		sumDeletions += float64(stats.Deletions)
+		additions = append(additions, float64(stats.Additions))
+		deletions = append(deletions, float64(stats.Deletions))
 		sumFiles += float64(stats.FilesChanged)
 
 		total := float64(stats.Additions + stats.Deletions)
@@ -80,22 +84,17 @@ func CalculateBaseline(pairs []*git.CommitPair) *RepositoryBaseline {
 		commitSizes = append(commitSizes, commitSize)
 	}
 
-	n := float64(len(pairs))
-	baseline.AvgAdditions = sumAdditions / n
-	baseline.AvgDeletions = sumDeletions / n
-	baseline.AvgFilesChanged = sumFiles / n
-
-	var sumAddSqDev, sumDelSqDev float64
-	for _, pair := range pairs {
-		if pair.Stats.Additions == 0 && pair.Stats.Deletions == 0 {
-			continue
-		}
-		sumAddSqDev += math.Pow(float64(pair.Stats.Additions)-baseline.AvgAdditions, 2)
-		sumDelSqDev += math.Pow(float64(pair.Stats.Deletions)-baseline.AvgDeletions, 2)
+	n := float64(len(additions))
+	if n == 0 {
+		return baseline
 	}
 
-	baseline.StdDevAdditions = math.Sqrt(sumAddSqDev / n)
-	baseline.StdDevDeletions = math.Sqrt(sumDelSqDev / n)
+	// Use trimmed mean/stddev (exclude top/bottom 10%) to resist outlier pollution.
+	// This prevents a few massive AI-generated commits from skewing the baseline
+	// and making other large commits look "normal" by comparison.
+	baseline.AvgAdditions, baseline.StdDevAdditions = trimmedMeanStdDev(additions, 0.10)
+	baseline.AvgDeletions, baseline.StdDevDeletions = trimmedMeanStdDev(deletions, 0.10)
+	baseline.AvgFilesChanged = sumFiles / n
 
 	if len(additionRatios) > 0 {
 		sum := 0.0
@@ -112,6 +111,47 @@ func CalculateBaseline(pairs []*git.CommitPair) *RepositoryBaseline {
 	}
 
 	return baseline
+}
+
+// trimmedMeanStdDev computes the mean and standard deviation after excluding
+// the top and bottom trimFraction of values. For example, trimFraction=0.10
+// excludes the lowest 10% and highest 10%, computing stats on the middle 80%.
+// This makes the baseline robust against outliers (e.g., a few massive AI commits
+// polluting the mean/stddev for the entire repository).
+func trimmedMeanStdDev(values []float64, trimFraction float64) (mean, stddev float64) {
+	if len(values) == 0 {
+		return 0, 0
+	}
+
+	sorted := make([]float64, len(values))
+	copy(sorted, values)
+	sort.Float64s(sorted)
+
+	trimCount := int(float64(len(sorted)) * trimFraction)
+	// Don't trim everything — need at least 1 value
+	if trimCount*2 >= len(sorted) {
+		trimCount = 0
+	}
+
+	trimmed := sorted[trimCount : len(sorted)-trimCount]
+	if len(trimmed) == 0 {
+		return 0, 0
+	}
+
+	n := float64(len(trimmed))
+	sum := 0.0
+	for _, v := range trimmed {
+		sum += v
+	}
+	mean = sum / n
+
+	sumSqDev := 0.0
+	for _, v := range trimmed {
+		sumSqDev += math.Pow(v-mean, 2)
+	}
+	stddev = math.Sqrt(sumSqDev / n)
+
+	return mean, stddev
 }
 
 func DetectStatisticalAnomalies(pair *git.CommitPair, baseline *RepositoryBaseline) []*StatisticalAnomaly {

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/TryCadence/Cadence/internal/analysis"
+	"github.com/TryCadence/Cadence/internal/logging"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
@@ -24,16 +26,20 @@ type Server struct {
 	config   *ServerConfig
 	handlers *WebhookHandlers
 	queue    *JobQueue
+	log      *logging.Logger
+	Cache    analysis.AnalysisCache
+	Metrics  analysis.AnalysisMetrics
+	Plugins  *analysis.PluginManager
 }
 
 func NewServer(config *ServerConfig, processor JobProcessor) (*Server, error) {
 	if config == nil {
 		config = &ServerConfig{
 			Host:         "0.0.0.0",
-			Port:         3000,
+			Port:         8000,
 			MaxWorkers:   4,
 			ReadTimeout:  30 * time.Second,
-			WriteTimeout: 30 * time.Second,
+			WriteTimeout: 0, // Disabled: SSE streaming requires long-lived responses; handlers use context timeouts instead
 		}
 	}
 
@@ -58,6 +64,13 @@ func NewServer(config *ServerConfig, processor JobProcessor) (*Server, error) {
 
 	handlers := NewWebhookHandlers(config.WebhookSecret, queue, nil)
 
+	// Initialise observability and plugin subsystems
+	cache := analysis.NewInMemoryCache(analysis.WithMaxSize(256))
+	metrics := analysis.NewInMemoryMetrics()
+	plugins := analysis.NewPluginManager()
+
+	handlers.WithCache(cache).WithMetrics(metrics).WithPlugins(plugins)
+
 	handlers.RegisterRoutes(app)
 
 	return &Server{
@@ -65,6 +78,10 @@ func NewServer(config *ServerConfig, processor JobProcessor) (*Server, error) {
 		config:   config,
 		handlers: handlers,
 		queue:    queue,
+		log:      logging.Default().With("component", "server"),
+		Cache:    cache,
+		Metrics:  metrics,
+		Plugins:  plugins,
 	}, nil
 }
 
@@ -75,7 +92,7 @@ func (s *Server) Start() error {
 	}
 
 	addr := fmt.Sprintf("%s:%d", s.config.Host, s.config.Port)
-	fmt.Printf("Starting webhook server on %s\n", addr)
+	s.log.Info("starting webhook server", "address", addr, "workers", s.config.MaxWorkers)
 	return s.app.Listen(addr)
 }
 

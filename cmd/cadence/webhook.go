@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/TryCadence/Cadence/internal/config"
+	"github.com/TryCadence/Cadence/internal/logging"
 	"github.com/TryCadence/Cadence/internal/webhook"
 	"github.com/spf13/cobra"
 )
@@ -33,7 +34,7 @@ var webhookFlags struct {
 }
 
 func init() {
-	webhookCmd.Flags().IntVarP(&webhookFlags.port, "port", "p", 0, "webhook server port (default: 3000)")
+	webhookCmd.Flags().IntVarP(&webhookFlags.port, "port", "p", 0, "webhook server port (default: 8000)")
 	webhookCmd.Flags().StringVar(&webhookFlags.host, "host", "", "webhook server host (default: 0.0.0.0)")
 	webhookCmd.Flags().StringVar(&webhookFlags.secret, "secret", "", "webhook secret for signature verification")
 	webhookCmd.Flags().IntVar(&webhookFlags.maxWorkers, "workers", 0, "number of concurrent workers (default: 4)")
@@ -87,6 +88,7 @@ func runWebhookServer(cmd *cobra.Command, args []string) error {
 	// Create analysis processor
 	processor := &webhook.AnalysisProcessor{
 		DetectorThresholds: &cfg.Thresholds,
+		Logger:             logging.Default().With("component", "processor"),
 	}
 
 	// Create and start server
@@ -95,11 +97,12 @@ func runWebhookServer(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to create webhook server: %w", err)
 	}
 
-	fmt.Printf("Starting Cadence webhook server...\n")
-	fmt.Printf("Host: %s\n", webhookCfg.Host)
-	fmt.Printf("Port: %d\n", webhookCfg.Port)
-	fmt.Printf("Workers: %d\n", webhookCfg.MaxWorkers)
-	fmt.Printf("Ready to receive webhooks at http://%s:%d/webhooks/*\n", webhookCfg.Host, webhookCfg.Port)
+	log := logging.Default().With("component", "webhook_cmd")
+	log.Info("starting Cadence webhook server",
+		"host", webhookCfg.Host,
+		"port", webhookCfg.Port,
+		"workers", webhookCfg.MaxWorkers,
+	)
 
 	return server.Start()
 }

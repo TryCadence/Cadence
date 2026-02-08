@@ -39,8 +39,8 @@ We will:
 
 | Version | Status | Support |
 |---------|--------|---------|
-| v0.2.x  | Current | Full support |
-| v0.1.x  | Legacy | Security fixes only |
+| v0.3.x  | Current | Full support |
+| v0.2.x  | Legacy | Security fixes only |
 | < v0.1  | EOL | Not supported |
 
 ## Security Best Practices
