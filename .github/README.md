@@ -1,5 +1,8 @@
 # Cadence
 
+> [!CAUTION]
+> The "noslop.tech" website update for v0.3.0 has not yet been published it is expected to be released on 02/28/2026
+
 Detects AI-generated content in **git repositories** and **websites**.
 
 Cadence analyzes suspicious commits via code patterns, velocity anomalies, and statistical markers. It can also scan websites for AI-generated text using 38 detection strategies across 7 categories, with optional AI validation via OpenAI or Anthropic.
